@@ -75,6 +75,7 @@ class AiPlan:
 
 
 def _extract_json(text: str) -> dict:
+    text = re.sub(r"<think>.*?</think>", "", text, flags=re.S | re.I)  # reasoning models
     text = re.sub(r"^```(?:json)?|```$", "", text.strip(), flags=re.M).strip()
     try:
         return json.loads(text)
@@ -137,15 +138,17 @@ async def plan_from_request(request: str, *, endpoint: str, model: str | None, a
     if not request:
         raise AiError("empty request")
     url = endpoint.rstrip("/") + "/chat/completions"
-    body = {"model": model or "local-model", "temperature": 0,
-            "messages": [{"role": "system", "content": SYSTEM_PROMPT}, {"role": "user", "content": request}],
-            "response_format": {"type": "json_object"}}
+    body = {"model": model or "local-model", "temperature": 0, "max_tokens": 600,
+            "messages": [{"role": "system", "content": SYSTEM_PROMPT}, {"role": "user", "content": request}]}
+    # Optional extras. JSON mode, plus turning off "thinking" for reasoning models (Qwen3 etc.
+    # on vLLM/SGLang): with thinking on, a reply took >120 s; with it off, ~1 s and the same plan.
+    extras = {"response_format": {"type": "json_object"},
+              "chat_template_kwargs": {"enable_thinking": False}}
     headers = {"Authorization": f"Bearer {api_key}"} if api_key else {}
     async with httpx.AsyncClient(timeout=timeout, transport=transport) as client:
         try:
-            r = await client.post(url, json=body, headers=headers)
-            if r.status_code == 400:  # some servers reject response_format; retry without it
-                body.pop("response_format")
+            r = await client.post(url, json={**body, **extras}, headers=headers)
+            if r.status_code in (400, 422):  # server rejects an extra field: retry plain
                 r = await client.post(url, json=body, headers=headers)
         except httpx.HTTPError as exc:
             raise AiError(f"cannot reach the LLM at {endpoint}: {type(exc).__name__}") from exc

@@ -49,7 +49,17 @@ async def test_plan_from_request_with_fenced_json_and_fallback():
     plan = await plan_from_request("ps1 rpg 1998", endpoint="http://llm:11434/v1", model="m", transport=transport)
     assert plan.titles == ["Parasite Eve"] and plan.platforms == ["PS1"] and plan.year == "1998"
     assert "response_format" in calls[0] and "response_format" not in calls[1]
+    assert calls[0]["chat_template_kwargs"] == {"enable_thinking": False}
+    assert "chat_template_kwargs" not in calls[1]
     assert calls[0]["messages"][0]["role"] == "system" and "NO genre" in calls[0]["messages"][0]["content"]
+
+
+@pytest.mark.anyio
+async def test_reasoning_block_is_ignored():
+    reply = '<think>The user wants {horror} games... maybe {"x": 1}</think>\n{"titles": ["Silent Hill"], "platforms": ["PS1"]}'
+    transport, _ = llm(reply)
+    plan = await plan_from_request("ps1 horror", endpoint="http://llm/v1", model="m", transport=transport)
+    assert plan.titles == ["Silent Hill"]
 
 
 @pytest.mark.anyio
