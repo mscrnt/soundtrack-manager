@@ -36,7 +36,7 @@ docker compose pull && docker compose up -d     # released image
 
 Open <http://127.0.0.1:8080>. Downloads continue after you close the browser. The
 queue, settings, browser/FlareSolverr session and logs are kept in `DATA_DIR`, so
-restarts and upgrades lose nothing. Pin a version with `APP_VERSION=0.9.0` in `.env`.
+restarts and upgrades lose nothing. Pin a version with `APP_VERSION=0.1.0` in `.env`.
 
 * **Windows (Docker Desktop):** use forward slashes in `.env`, e.g. `DOWNLOAD_DIR=D:/Music/Soundtracks`.
 * **Unraid:** `PUID=99`, `PGID=100`, `DATA_DIR=/mnt/user/appdata/soundtrack-manager`,
@@ -159,11 +159,11 @@ Versions follow [SemVer](https://semver.org). The single source is
 
 ```sh
 # bump __version__, commit, then:
-git tag -a v0.9.1 -m "v0.9.1" && git push origin v0.9.1
+git tag -a v0.1.1 -m "v0.1.1" && git push origin v0.1.1
 ```
 
 The **Release** workflow runs the tests, checks that the tag matches `__version__`, builds
-and pushes the multi-arch image (`:0.9.1`, `:0.9`, `:0`, `:latest`; pre-releases like
+and pushes the multi-arch image (`:0.1.1`, `:0.1`, `:latest`, plus `:1` once at 1.x; pre-releases like
 `v1.0.0-rc.1` skip `:latest`), and creates a GitHub Release with generated notes. **CI** runs
 the tests on Linux and Windows, plus a Docker build, for every push and pull request.
 
