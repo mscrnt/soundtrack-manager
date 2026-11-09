@@ -31,6 +31,16 @@ def test_read_secret_file_and_env(tmp_path, monkeypatch):
     assert config.read_secret("KHINSIDER_PASSWORD").get() == "from-env"
 
 
+def test_empty_secret_file_falls_back_to_env_and_bom_tolerated(tmp_path, monkeypatch):
+    monkeypatch.setattr(config, "SECRETS_DIR", tmp_path)
+    monkeypatch.delenv("KHINSIDER_PASSWORD_FILE", raising=False)
+    (tmp_path / "khinsider_password").write_text("")
+    monkeypatch.setenv("KHINSIDER_PASSWORD", "from-env")
+    assert config.read_secret("KHINSIDER_PASSWORD").get() == "from-env"
+    (tmp_path / "khinsider_password").write_bytes("﻿with-bom\r\n".encode("utf-8"))
+    assert config.read_secret("KHINSIDER_PASSWORD").get() == "with-bom"
+
+
 def test_read_secret_docker_secrets_dir(tmp_path, monkeypatch):
     (tmp_path / "khinsider_password").write_text("docker-secret")
     monkeypatch.setattr(config, "SECRETS_DIR", tmp_path)

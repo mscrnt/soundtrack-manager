@@ -9,12 +9,14 @@ in :class:`Secret`, so they never appear in ``repr()``, logs or JSON.
 from __future__ import annotations
 
 import ipaddress
+import logging
 import os
 import re
 from dataclasses import dataclass, field, fields
 from pathlib import Path
 
 SECRETS_DIR = Path(os.environ.get("STM_SECRETS_DIR", "/run/secrets"))
+log = logging.getLogger(__name__)
 
 FORMATS = ("flac", "mp3")
 # Native default: FlareSolverr published on localhost (compose sets http://flaresolverr:8191).
@@ -50,7 +52,10 @@ def read_secret(name: str) -> Secret:
     for p in candidates:
         try:
             if p.is_file():
-                return Secret(p.read_text(encoding="utf-8").strip())
+                value = p.read_text(encoding="utf-8-sig").strip()  # -sig: tolerate a BOM from Notepad
+                if value:
+                    return Secret(value)
+                log.warning("secret file %s is empty; falling back to the %s variable", p, name)
         except OSError:
             pass
     return Secret(_env(name))
