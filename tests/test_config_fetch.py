@@ -133,10 +133,12 @@ async def test_refuses_foreign_hosts():
 async def test_rate_limiter_spacing():
     import time
     lim = RateLimiter(0.05)
-    t0 = time.monotonic()
+    stamps = []
     for _ in range(3):
         await lim.wait()
-    assert time.monotonic() - t0 >= 0.1
+        stamps.append(lim._last)
+    # every gap honours the minimum interval by the monotonic clock (also on Windows' coarse timer)
+    assert all(b - a >= 0.05 for a, b in zip(stamps, stamps[1:]))
 
 
 class _FakeBrowser:

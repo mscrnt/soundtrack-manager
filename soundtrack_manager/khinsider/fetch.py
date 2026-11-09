@@ -84,8 +84,9 @@ class RateLimiter:
 
     async def wait(self) -> None:
         async with self._lock:
-            delay = self._last + self.min_interval - time.monotonic()
-            if delay > 0:
+            # Loop: on Windows the event loop's timer can wake a few ms early, and the
+            # minimum gap must hold by the monotonic clock.
+            while (delay := self._last + self.min_interval - time.monotonic()) > 0:
                 await asyncio.sleep(delay)
             self._last = time.monotonic()
 
