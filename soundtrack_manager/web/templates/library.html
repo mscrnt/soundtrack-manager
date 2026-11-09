@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% block title %}Library · Soundtrack Manager{% endblock %}
+{% block content %}
+<div class="d-flex flex-wrap align-items-baseline gap-3 mb-3">
+  <h1 class="h4 mb-0 me-auto">Library</h1>
+  <span class="small">{{ stats.folders }} album folder(s) · {{ stats.files }} files · {{ stats.bytes|human_bytes }}</span>
+  {% for st, n in stats.by_status.items() %}<span class="badge text-bg-light border">{{ st }}: {{ n }}</span>{% endfor %}
+</div>
+
+<div class="row g-3 mb-3">
+  <div class="col-12 col-lg-7">
+    <div class="card h-100">
+      <div class="card-header">Scan &amp; verify</div>
+      <div class="card-body">
+        <form class="row g-2 align-items-end" hx-post="/library/scan" hx-target="#scan-status">
+          <div class="col-12 col-md-7">
+            <label class="form-label small mb-1" for="root">Folder</label>
+            <select class="form-select form-select-sm" id="root" name="root">
+              {% for i, path, last in roots %}<option value="{{ i }}">{{ path }}{% if last %} (last scan {{ last.value }}){% endif %}</option>{% endfor %}
+            </select>
+          </div>
+          <div class="col-auto form-check ms-2">
+            <input class="form-check-input" type="checkbox" id="deep" name="deep" value="1">
+            <label class="form-check-label small" for="deep" title="Hash every file (SHA-256). Slower, finds silent corruption.">Deep verify</label>
+          </div>
+          <div class="col-auto"><button class="btn btn-sm btn-primary" type="submit">Scan</button></div>
+        </form>
+        <div id="scan-status" class="mt-2">{% include "partials/_library_scan.html" %}</div>
+        <p class="small text-body-secondary mb-0 mt-2">Scanning only reads files. Nothing is deleted, moved or overwritten.
+          Extra folders can be added with <code>LIBRARY_EXTRA_DIRS</code>.</p>
+      </div>
+    </div>
+  </div>
+  <div class="col-12 col-lg-5">
+    <div class="card h-100">
+      <div class="card-header">khinsider account history</div>
+      <div class="card-body small">
+        <p class="mb-2">Imports the albums listed under <em>My Profile</em> (downloads) and <em>My History</em>, so albums
+          missing from the library can be found and queued again.</p>
+        <p class="mb-2">Last import: {{ history_sync.value if history_sync else 'never' }} · {{ stats.account_albums }} album(s) known</p>
+        <button class="btn btn-sm btn-outline-primary" hx-post="/library/history-sync" hx-target="#history-msg" hx-indicator="#hist-spin">
+          Import history <span id="hist-spin" class="spinner-border spinner-border-sm htmx-indicator"></span></button>
+        {% if not has_credentials %}<span class="text-body-secondary ms-1">(needs a logged-in session)</span>{% endif %}
+        <div id="history-msg"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<ul class="nav nav-tabs" role="tablist">
+  <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-albums" type="button" role="tab">Albums</button></li>
+  <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-missing" type="button" role="tab"
+        hx-get="/library/missing" hx-target="#missing" hx-trigger="click">Missing &amp; recovery</button></li>
+  <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-dupes" type="button" role="tab"
+        hx-get="/library/duplicates" hx-target="#dupes" hx-trigger="click">Duplicates</button></li>
+</ul>
+<div class="tab-content border border-top-0 p-2 mb-3">
+  <div class="tab-pane fade show active" id="tab-albums" role="tabpanel">
+    <form class="d-flex flex-wrap gap-2 mb-2" hx-get="/library/albums" hx-target="#lib-albums" hx-trigger="submit, input changed delay:400ms from:#lib-q, change from:#lib-status">
+      <input class="form-control form-control-sm w-auto" type="search" id="lib-q" name="q" value="{{ q }}" placeholder="Search albums or folders">
+      <select class="form-select form-select-sm w-auto" id="lib-status" name="status">
+        <option value="">All statuses</option>
+        {% for st in ['ok', 'unverified', 'incomplete', 'unmatched'] %}<option {% if status == st %}selected{% endif %}>{{ st }}</option>{% endfor %}
+      </select>
+    </form>
+    <div id="lib-albums" hx-get="/library/albums?q={{ q|urlencode }}&status={{ status|urlencode }}" hx-trigger="load"></div>
+  </div>
+  <div class="tab-pane fade" id="tab-missing" role="tabpanel"><div id="missing"><span class="spinner-border spinner-border-sm"></span></div></div>
+  <div class="tab-pane fade" id="tab-dupes" role="tabpanel"><div id="dupes"><span class="spinner-border spinner-border-sm"></span></div></div>
+</div>
+{% endblock %}

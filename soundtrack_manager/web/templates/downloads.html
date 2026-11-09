@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Downloads · Soundtrack Manager{% endblock %}
+{% block content %}
+<div class="d-flex flex-wrap align-items-end gap-3 mb-3">
+  <h1 class="h4 me-auto mb-0">Downloads</h1>
+  <form class="d-flex align-items-end gap-2" hx-post="/downloads/concurrency" hx-target="#concurrency-msg">
+    <div>
+      <label class="form-label small mb-1" for="concurrency">Concurrent downloads</label>
+      <input class="form-control form-control-sm w-auto" type="number" min="1" max="8" id="concurrency" name="value" value="{{ concurrency }}">
+    </div>
+    <button class="btn btn-sm btn-outline-primary" type="submit">Apply</button>
+  </form>
+  <div id="concurrency-msg"></div>
+</div>
+<div id="jobs" hx-get="/downloads/jobs" hx-trigger="every 2s" hx-swap="innerHTML">
+  {% include "partials/_jobs.html" %}
+</div>
+{% endblock %}

@@ -1,0 +1,16 @@
+{% if scan.running %}
+<div hx-get="/library/scan-status" hx-trigger="every 1s" hx-swap="outerHTML" class="small">
+  <span class="spinner-border spinner-border-sm"></span> Scanning <code>{{ scan.root }}</code>{% if scan.deep %} (deep verify){% endif %}…
+  {% if scan.current %}<span class="text-body-secondary">{{ scan.current }}</span>{% endif %}
+</div>
+{% elif scan.error %}
+<div class="alert alert-danger py-1 px-2 small mb-0">Scan failed: {{ scan.error }}</div>
+{% elif scan.result %}
+{% set r = scan.result %}
+<div class="alert alert-success py-1 px-2 small mb-0">
+  Scanned {{ r.folders }} folder(s): {{ r.matched }} matched, {{ r.unmatched }} unmatched, {{ r.incomplete }} incomplete
+  · {{ r.files }} files, {{ r.bytes|human_bytes }}{% if r.removed_records %} · {{ r.removed_records }} vanished folder record(s) forgotten{% endif %}
+  {% if r.errors %}<br>{{ r.errors|length }} error(s): {{ r.errors[:3]|join('; ') }}{% endif %}
+  <a href="/library">Refresh list</a>
+</div>
+{% endif %}

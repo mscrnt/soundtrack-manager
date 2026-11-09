@@ -1,0 +1,34 @@
+{% set a = album %}
+<div class="row g-3">
+  <div class="col-12 col-md-3">
+    {% if a.cover_urls %}<img class="cover img-fluid rounded" src="{{ a.cover_urls[0] }}" alt="Cover of {{ a.title }}" loading="lazy" referrerpolicy="no-referrer">{% endif %}
+  </div>
+  <div class="col-12 col-md-9">
+    <dl class="row small mb-2">
+      {% for label, value in [("Platforms", a.platforms|join(', ')), ("Year", a.year), ("Album type", a.album_type),
+                              ("Catalog number", a.catalog_number), ("Publisher", a.publisher), ("Developer", a.developer),
+                              ("Date added", a.date_added), ("Files", a.file_count), ("Total size (site)", a.total_size_text),
+                              ("Formats", (a.formats or [])|join(', '))] %}
+        {% if value %}<dt class="col-4 col-lg-2">{{ label }}</dt><dd class="col-8 col-lg-4">{{ value }}</dd>{% endif %}
+      {% endfor %}
+      {% for fmt, b in size_estimates.items() %}
+        <dt class="col-4 col-lg-2">Est. {{ fmt }}</dt><dd class="col-8 col-lg-4">{{ b|human_bytes }} <span class="text-body-secondary">(sum of track sizes)</span></dd>
+      {% endfor %}
+    </dl>
+    {% if dest %}<p class="small mb-2">Folder: <code>{{ dest }}</code></p>{% endif %}
+    {% if a.description %}<p class="small">{{ a.description }}</p>{% endif %}
+    <details>
+      <summary class="small">{{ a.tracks|length }} track(s)</summary>
+      <table class="table table-sm small mb-0">
+        <thead><tr><th>#</th>{% if a.tracks and a.tracks[0].disc is not none %}<th>CD</th>{% endif %}<th>Title</th><th>Length</th>{% for f in a.formats or [] %}<th>{{ f }}</th>{% endfor %}</tr></thead>
+        <tbody>
+        {% for t in a.tracks %}
+          <tr><td>{{ t.number or '' }}</td>{% if a.tracks[0].disc is not none %}<td>{{ t.disc or '' }}</td>{% endif %}<td>{{ t.title }}</td><td>{{ t.duration or '' }}</td>
+            {% for f in a.formats or [] %}<td>{{ t.sizes.get(f, '—') }}</td>{% endfor %}</tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </details>
+    <a class="small" href="#" hx-get="/albums/{{ a.id }}/details?refresh=1" hx-target="#details-{{ a.id }}">re-fetch album page</a>
+  </div>
+</div>

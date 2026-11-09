@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}Download · Soundtrack Manager{% endblock %}
+{% block content %}
+<p class="small mb-2"><a href="/downloads">← Downloads</a></p>
+{% if not job %}
+  <p>Unknown download.</p>
+{% else %}
+<div id="job-files" hx-get="/downloads/{{ job.id }}/files" hx-trigger="every 2s">
+  {% include "partials/_job_files.html" %}
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en" data-bs-theme="auto">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="htmx-config" content='{"includeIndicatorStyles": false, "defaultSwapStyle": "innerHTML"}'>
+  <title>{% block title %}Soundtrack Manager{% endblock %}</title>
+  <link rel="stylesheet" href="/static/vendor/bootstrap.min.css">
+  <link rel="stylesheet" href="/static/app.css">
+  <script src="/static/theme.js"></script>
+</head>
+<body>
+<nav class="navbar navbar-expand-md border-bottom mb-3 bg-body-tertiary">
+  <div class="container-fluid">
+    <a class="navbar-brand fw-semibold" href="/discover">🎮 Soundtrack Manager</a>
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#nav" aria-controls="nav" aria-expanded="false" aria-label="Toggle navigation">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="nav">
+      {% set p = request.url.path %}
+      <ul class="navbar-nav me-auto">
+        <li class="nav-item"><a class="nav-link {% if p.startswith('/discover') %}active{% endif %}" href="/discover">Discover</a></li>
+        <li class="nav-item"><a class="nav-link {% if p.startswith('/downloads') %}active{% endif %}" href="/downloads">Downloads</a></li>
+        <li class="nav-item"><a class="nav-link {% if p.startswith('/library') %}active{% endif %}" href="/library">Library</a></li>
+        <li class="nav-item"><a class="nav-link {% if p.startswith('/settings') %}active{% endif %}" href="/settings">Settings</a></li>
+      </ul>
+      <span id="session-badge" hx-get="/session/status" hx-trigger="every 30s" hx-swap="innerHTML">
+        {% include "partials/_session.html" %}
+      </span>
+    </div>
+  </div>
+</nav>
+<main class="container-fluid pb-5">
+  {% block content %}{% endblock %}
+</main>
+<div id="toast-area" class="toast-area" aria-live="polite"></div>
+<script src="/static/vendor/htmx.min.js"></script>
+<script src="/static/vendor/bootstrap.bundle.min.js"></script>
+<script src="/static/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,8 @@
+{% if session.last_blocked_at and (not session.last_ok_at or session.last_blocked_at > session.last_ok_at) %}
+  <span class="badge text-bg-warning" title="{{ session.last_blocked_reason or '' }}">Site: access check</span>
+{% elif session.last_ok_at %}
+  <span class="badge text-bg-success">Site: OK ({{ session.mode }})</span>
+{% else %}
+  <span class="badge text-bg-secondary">Site: not contacted</span>
+{% endif %}
+{% if session.logged_in %}<span class="badge text-bg-info">Logged in</span>{% endif %}

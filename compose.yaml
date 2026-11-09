@@ -1,0 +1,73 @@
+# Usage: cp .env.example .env  (edit DOWNLOAD_DIR), then either
+#   docker compose pull && docker compose up -d     # released image from GHCR
+#   docker compose up -d --build                     # build from this checkout
+name: soundtrack-manager
+
+services:
+  app:
+    image: ghcr.io/mscrnt/soundtrack-manager:${APP_VERSION:-latest}
+    build: .
+    pull_policy: missing
+    restart: unless-stopped
+    init: true                     # reaps browser child processes, forwards SIGTERM
+    user: "${PUID:-1000}:${PGID:-1000}"
+    ports:
+      # Host side defaults to loopback only. Set WEB_BIND=0.0.0.0 to expose on the LAN
+      # (the app then refuses to start unless WEB_PASSWORD is set).
+      - "${WEB_BIND:-127.0.0.1}:${WEB_PORT:-8080}:8080"
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      # Fixed in-container paths and listener; the host-side values come from .env.
+      STM_DATA_DIR: /data
+      STM_DOWNLOAD_DIR: /downloads
+      WEB_HOST: 0.0.0.0
+      WEB_PORT: "8080"
+      WEB_PUBLISHED_BIND: ${WEB_BIND:-127.0.0.1}
+      STM_SECRETS_DIR: /run/secrets
+      # On by default. Set FLARESOLVERR_URL= (empty) in .env to disable it.
+      FLARESOLVERR_URL: ${FLARESOLVERR_URL-http://flaresolverr:8191}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"   # reach a local LLM on the host (Linux; built in on Docker Desktop)
+    depends_on:
+      flaresolverr:
+        condition: service_started
+        required: false
+    volumes:
+      - ${DATA_DIR:-./data}:/data
+      - ${DOWNLOAD_DIR:-./downloads}:/downloads
+      # Optional secret files: khinsider_password, web_password, llm_api_key (one value per file).
+      - ${SECRETS_DIR:-./secrets}:/run/secrets:ro
+      # Optional: an existing soundtrack collection to scan (read-only). Then set
+      # LIBRARY_EXTRA_DIRS=/library in .env.
+      # - /path/to/existing/Soundtracks:/library:ro
+    # Hardening: no privileges, no capabilities, read-only root filesystem.
+    read_only: true
+    tmpfs:
+      - /tmp:size=512m
+    shm_size: 1gb                  # Chromium needs more than Docker's 64 MB default
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    stop_grace_period: 30s
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8080/healthz', timeout=4).status == 200 else 1)"]
+      interval: 30s
+      timeout: 5s
+      start_period: 20s
+      retries: 3
+
+  # Handles the site's Cloudflare check for the app. It is reachable only from the
+  # app on this compose network (no published port). Keep LOG_LEVEL at info:
+  # debug logging can include request bodies, such as the login form.
+  flaresolverr:
+    image: ghcr.io/flaresolverr/flaresolverr:v3.5.2
+    restart: unless-stopped
+    init: true
+    environment:
+      LOG_LEVEL: info
+      TZ: ${TZ:-UTC}
+    shm_size: 1gb
+    security_opt:
+      - no-new-privileges:true

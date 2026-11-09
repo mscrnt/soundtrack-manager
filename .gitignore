@@ -1,0 +1,22 @@
+# Local config and secrets: never commit
+.env
+.env.*
+!.env.example
+secrets/*
+!secrets/README.md
+
+# Runtime data (database, browser profile with session cookies, logs) and downloads
+data/
+downloads/
+*.sqlite3
+*.sqlite3-*
+
+# Python
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+*.egg-info/
+build/
+dist/

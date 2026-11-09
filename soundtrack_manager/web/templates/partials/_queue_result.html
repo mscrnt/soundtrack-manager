@@ -1,0 +1,9 @@
+{% set parts = [] %}
+<div class="alert alert-{{ 'success' if res.added else 'secondary' }} alert-dismissible fade show py-1 px-2 mb-0 small" role="status">
+  Added <strong>{{ res.added|length }}</strong> album(s) as {{ fmt|upper }}.
+  {% if res.already_queued %} {{ res.already_queued|length }} already in the queue.{% endif %}
+  {% if res.already_completed %} {{ res.already_completed|length }} already downloaded.{% endif %}
+  {% if res.missing %} {{ res.missing|length }} unknown.{% endif %}
+  {% if res.added %}<a href="/downloads">View downloads →</a>{% endif %}
+  <button type="button" class="btn-close btn-sm py-1" data-bs-dismiss="alert" aria-label="Close"></button>
+</div>

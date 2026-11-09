@@ -1,0 +1,49 @@
+{% set badge = {'running':'text-bg-primary','queued':'text-bg-secondary','paused':'text-bg-warning','completed':'text-bg-success','failed':'text-bg-danger','cancelled':'text-bg-light border'} %}
+<div class="d-flex flex-wrap gap-2 mb-2 small">
+  {% for k in ["running", "queued", "paused", "completed", "failed", "cancelled"] %}
+  <span class="badge {{ badge[k] }}">{{ k|capitalize }}: {{ counts[k] }}</span>
+  {% endfor %}
+  {% if not worker_on %}<span class="badge text-bg-warning">Worker off (WORKER_ENABLED=false): run <code>python main.py download</code></span>{% endif %}
+</div>
+{% if not jobs %}
+  <p class="text-body-secondary">The queue is empty. Add albums from <a href="/discover">Discover</a>.</p>
+{% else %}
+<div class="table-responsive">
+<table class="table table-sm align-middle">
+  <thead><tr><th>Album</th><th>Format</th><th>Status</th><th class="w-progress">Progress</th><th>Tracks</th><th>Speed</th><th></th></tr></thead>
+  <tbody>
+  {% for j in jobs %}
+    {% set pct = ((j.bytes_done / j.bytes_total * 100) if j.bytes_total else ((j.files_done / j.files_total * 100) if j.files_total else 0)) %}
+    {% set pct = ([pct, 100]|min)|round(1) %}
+    <tr>
+      <td><a href="/downloads/{{ j.id }}">{{ j.title }}</a>{% if j.year %} <span class="text-body-secondary small">({{ j.year }})</span>{% endif %}
+        {% if j.status == 'running' and j.current_file %}<div class="small text-body-secondary text-truncate job-file">↓ {{ j.current_file }}</div>{% endif %}
+        {% if j.note %}<div class="small text-info-emphasis">{{ j.note }}</div>{% endif %}
+        {% if j.error %}<div class="small {{ 'text-danger' if j.status == 'failed' else 'text-warning-emphasis' }}">{{ j.error }}</div>{% endif %}</td>
+      <td class="small">{{ j.format|upper }}{% if j.actual_format and j.actual_format != j.format %} → {{ j.actual_format|upper }}{% endif %}</td>
+      <td><span class="badge {{ badge[j.status] }}">{{ j.status }}</span></td>
+      <td>
+        <div class="progress" role="progressbar" aria-label="Progress" aria-valuenow="{{ pct }}" aria-valuemin="0" aria-valuemax="100">
+          <div class="progress-bar {% if j.status == 'running' %}progress-bar-striped progress-bar-animated{% elif j.status == 'failed' %}bg-danger{% elif j.status == 'completed' %}bg-success{% endif %}" style="width: {{ pct }}%">{% if pct %}{{ pct }}%{% endif %}</div>
+        </div>
+        <div class="small text-body-secondary">{{ j.bytes_done|human_bytes }}{% if j.bytes_total %} / {{ j.bytes_total|human_bytes }}{% endif %}</div>
+      </td>
+      <td class="small text-nowrap">{{ j.files_done }}{% if j.files_total %}/{{ j.files_total }}{% endif %}
+        {% if j.files_failed %}<span class="text-danger">· {{ j.files_failed }} failed</span>{% endif %}
+        {% if j.files_conflict %}<span class="text-warning-emphasis">· {{ j.files_conflict }} kept</span>{% endif %}</td>
+      <td class="small text-nowrap">{{ j.speed_text or '—' }}</td>
+      <td class="text-nowrap">
+        {% if j.status in ('queued', 'running') %}<button class="btn btn-sm btn-outline-warning" hx-post="/jobs/{{ j.id }}/pause" hx-target="#jobs">Pause</button>{% endif %}
+        {% if j.status == 'paused' %}<button class="btn btn-sm btn-outline-primary" hx-post="/jobs/{{ j.id }}/resume" hx-target="#jobs">Resume</button>{% endif %}
+        {% if j.status in ('failed', 'cancelled') %}<button class="btn btn-sm btn-outline-primary" hx-post="/jobs/{{ j.id }}/retry" hx-target="#jobs">Retry</button>{% endif %}
+        {% if j.files_conflict and j.status in ('completed', 'failed') %}<button class="btn btn-sm btn-outline-danger" hx-post="/jobs/{{ j.id }}/overwrite" hx-target="#jobs"
+            hx-confirm="Replace {{ j.files_conflict }} existing file(s) in this album folder with the site's version? Your current copies will be overwritten.">Overwrite conflicts…</button>{% endif %}
+        {% if j.status in ('queued', 'running', 'paused') %}<button class="btn btn-sm btn-outline-danger" hx-post="/jobs/{{ j.id }}/cancel" hx-target="#jobs" hx-confirm="Cancel this download? Files already on disk are kept.">Cancel</button>{% endif %}
+        {% if j.status != 'running' %}<button class="btn btn-sm btn-outline-secondary" hx-post="/jobs/{{ j.id }}/remove" hx-target="#jobs" hx-confirm="Remove from the list? This does not delete any files.">Remove</button>{% endif %}
+      </td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% endif %}

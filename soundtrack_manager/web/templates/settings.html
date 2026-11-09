@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}Settings · Soundtrack Manager{% endblock %}
+{% block content %}
+<h1 class="h4">Settings</h1>
+<div class="row g-4">
+  <div class="col-12 col-xl-6">
+    <div id="settings-form">{% include "partials/_settings_form.html" %}</div>
+  </div>
+  <div class="col-12 col-xl-6">
+    <div class="card mb-3">
+      <div class="card-header">khinsider session</div>
+      <div class="card-body small">
+        <p class="mb-1">Status: <span hx-get="/session/status" hx-trigger="load, every 15s">{% include "partials/_session.html" %}</span></p>
+        <p class="mb-1">Fetch mode: <code>{{ s.fetch_mode }}</code> · browser {{ 'headless' if s.browser_headless else 'visible' }} · profile in the data directory</p>
+        <p class="mb-2">Credentials: {% if has_credentials %}configured (username <code>{{ s.khinsider_username }}</code>, password from secret){% else %}not configured{% endif %}</p>
+        {% if has_credentials %}
+        <button class="btn btn-sm btn-outline-primary" hx-post="/session/login" hx-target="#login-msg" hx-indicator="#login-spin">
+          Log in now <span id="login-spin" class="spinner-border spinner-border-sm htmx-indicator"></span></button>
+        {% endif %}
+        <div id="login-msg"></div>
+        <p class="text-body-secondary mt-2 mb-0">The app never bypasses Cloudflare checks or CAPTCHAs. If the site shows one, complete it yourself
+          in a visible browser session (<code>python main.py browser open</code> on a desktop), or log in that way instead of using stored credentials.</p>
+      </div>
+    </div>
+    <div class="card mb-3">
+      <div class="card-header">Effective configuration (read-only; from <code>.env</code>)</div>
+      <div class="card-body p-0">
+        <table class="table table-sm small mb-0">
+          {% for k, v in public.items() %}<tr><th class="fw-normal text-body-secondary">{{ k }}</th><td><code>{{ v }}</code></td></tr>{% endfor %}
+        </table>
+      </div>
+    </div>
+  </div>
+  <div class="col-12">
+    <div class="card">
+      <div class="card-header d-flex">Application log <a href="#" class="ms-auto small" hx-get="/settings/logs" hx-target="#logs">refresh</a></div>
+      <div class="card-body p-0"><div id="logs" hx-get="/settings/logs" hx-trigger="load"></div></div>
+    </div>
+  </div>
+</div>
+{% endblock %}

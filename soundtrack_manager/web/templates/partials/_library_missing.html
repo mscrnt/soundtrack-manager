@@ -1,0 +1,26 @@
+{% if not missing %}
+  <p class="small text-body-secondary mb-0">Nothing missing. (This compares your imported account history and earlier downloads against the last scan.)</p>
+{% else %}
+<form id="recover-form" hx-post="/library/recover" hx-target="#recover-msg">
+  <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+    <div class="form-check mb-0">
+      <input class="form-check-input" type="checkbox" id="select-missing" data-select-all="#recover-form .album-check">
+      <label class="form-check-label small" for="select-missing">Select all</label>
+    </div>
+    <select class="form-select form-select-sm w-auto" name="format" aria-label="Format">
+      {% for f in formats %}<option value="{{ f }}" {% if f == preferred_format %}selected{% endif %}>{{ f|upper }}</option>{% endfor %}
+    </select>
+    <button class="btn btn-sm btn-success" type="submit" hx-confirm="Queue the selected albums for download again? Good files already on disk are kept.">Queue selected for recovery</button>
+    <div id="recover-msg" class="flex-grow-1"></div>
+  </div>
+  <table class="table table-sm small">
+    <thead><tr><th></th><th>Album</th><th>Why</th></tr></thead>
+    <tbody>
+    {% for m in missing %}
+      <tr><td><input class="form-check-input album-check" type="checkbox" name="album_id" value="{{ m.id }}" aria-label="Select {{ m.title }}"></td>
+        <td>{{ m.title }}{% if m.year %} ({{ m.year }}){% endif %}</td><td class="text-body-secondary">{{ m.reason }}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</form>
+{% endif %}

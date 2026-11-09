@@ -1,0 +1,28 @@
+{% set sbadge = {'ok':'text-bg-success','unverified':'text-bg-secondary','incomplete':'text-bg-danger','unmatched':'text-bg-warning'} %}
+{% if not albums %}
+  <p class="text-body-secondary small mb-0">Nothing here yet. Run a scan above.</p>
+{% else %}
+<div class="table-responsive">
+<table class="table table-sm align-middle small mb-0">
+  <thead><tr><th>Album</th><th>Folder</th><th>Status</th><th>Files</th><th>Size</th><th>Matched by</th><th></th></tr></thead>
+  <tbody>
+  {% for a in albums %}
+    <tr>
+      <td>{{ a.album_title or a.title_guess }}{% if a.year %} <span class="text-body-secondary">({{ a.year }})</span>{% endif %}</td>
+      <td><code>{{ a.rel_path }}</code></td>
+      <td><span class="badge {{ sbadge[a.status] }}" title="{% if a.status == 'unverified' %}Matched by name; no album_info.json to check files against{% endif %}">{{ a.status }}</span>
+        {% if a.missing_count %}<span class="text-danger">{{ a.missing_count }} missing</span>{% endif %}
+        {% if a.mismatch_count %}<span class="text-danger">{{ a.mismatch_count }} damaged</span>{% endif %}</td>
+      <td>{{ a.file_count }}</td>
+      <td class="text-nowrap">{{ a.total_bytes|human_bytes }}</td>
+      <td>{{ {'album_info':'album_info.json','title':'folder name'}.get(a.match_method, '—') }}</td>
+      <td><button class="btn btn-sm btn-outline-secondary py-0" hx-get="/library/albums/{{ a.id }}/files" hx-target="#lib-files-{{ a.id }}"
+                  data-toggle-row="#lib-row-{{ a.id }}">Details</button></td>
+    </tr>
+    <tr id="lib-row-{{ a.id }}" class="d-none details-row"><td colspan="7"><div id="lib-files-{{ a.id }}"></div></td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% if albums|length >= 500 %}<p class="small text-body-secondary">Showing the first 500. Use the search box to narrow down.</p>{% endif %}
+{% endif %}

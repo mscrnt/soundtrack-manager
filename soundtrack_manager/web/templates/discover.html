@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% block title %}Discover · Soundtrack Manager{% endblock %}
+{% block content %}
+{% if ai_enabled %}
+<form class="d-flex gap-2 mb-2" hx-post="/discover/ai" hx-target="#ai-msg" hx-indicator="#ai-spin">
+  <input class="form-control" name="prompt" maxlength="500" placeholder="Ask: e.g. PlayStation 1 survival horror soundtracks released between 1996 and 2000"
+         value="{{ request.query_params.get('ai', '') }}" aria-label="Describe what you are looking for">
+  <button class="btn btn-outline-primary text-nowrap" type="submit">Ask AI <span id="ai-spin" class="spinner-border spinner-border-sm htmx-indicator"></span></button>
+</form>
+<div id="ai-msg"></div>
+{% endif %}
+{% if request.query_params.get('ai') %}
+<div class="alert alert-info py-1 px-2 small">AI turned “{{ request.query_params.get('ai') }}” into the filters below. The results come
+  straight from the site's search, so check them and adjust the filters as needed.
+  {% if request.query_params.get('ai_warn') %}<br><span class="text-warning-emphasis">{{ request.query_params.get('ai_warn') }}</span>{% endif %}</div>
+{% endif %}
+<form id="search-form" class="row g-2 align-items-end mb-3"
+      action="/discover" method="get"
+      hx-get="/discover/results" hx-target="#results" hx-push-url="true"
+      hx-indicator="#search-spinner">
+  <div class="col-12 col-lg-3">
+    <label class="form-label small mb-1" for="q">Search</label>
+    <input type="search" class="form-control" id="q" name="q" value="{{ form.q }}" placeholder="Final Fantasy  ·  or several: Resident Evil | Silent Hill" autofocus>
+  </div>
+  <div class="col-6 col-md-3 col-lg-2">
+    <label class="form-label small mb-1" for="platform">Platform</label>
+    <select class="form-select" id="platform" name="platform">
+      <option value="">Any</option>
+      {% for p in platforms %}
+      <option value="{{ p.name }}" {% if p.name in form.platform %}selected{% endif %}>{{ p.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="col-6 col-md-3 col-lg-2">
+    <label class="form-label small mb-1" for="type">Album type</label>
+    <select class="form-select" id="type" name="type">
+      <option value="">Any</option>
+      {% for t in album_types %}
+      <option value="{{ t.id }}" {% if form.type == t.id|string %}selected{% endif %}>{{ t.label }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="col-6 col-md-2 col-lg-2">
+    <label class="form-label small mb-1" for="year">Year</label>
+    <input type="text" class="form-control" id="year" name="year" value="{{ form.year }}" placeholder="1998 or 1996-2000" inputmode="numeric">
+  </div>
+  <div class="col-6 col-md-2 col-lg-1">
+    <label class="form-label small mb-1" for="sort">Sort</label>
+    <select class="form-select" id="sort" name="sort">
+      {% for k, label in sorts.items() %}
+      <option value="{{ k }}" {% if form.sort == k %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="col-6 col-md-1">
+    <label class="form-label small mb-1" for="per_page">Per page</label>
+    <select class="form-select" id="per_page" name="per_page">
+      {% for n in per_page_choices %}<option {% if form.per_page == n %}selected{% endif %}>{{ n }}</option>{% endfor %}
+    </select>
+  </div>
+  <div class="col-12 col-md-auto">
+    <button class="btn btn-primary" type="submit">
+      Search <span id="search-spinner" class="spinner-border spinner-border-sm htmx-indicator" role="status" aria-hidden="true"></span>
+    </button>
+  </div>
+</form>
+<p class="small text-body-secondary">With search text, the site's search is used. With only a platform, that platform's full album list is fetched once (cached for a day) and filtered here.</p>
+
+<div id="results">
+  {% if error %}{% with level=error[0], message=error[1] %}{% include "partials/_alert.html" %}{% endwith %}{% endif %}
+  {% if result %}
+    {% include "partials/_results.html" %}
+  {% elif history %}
+    <h2 class="h6 mt-4">Recent searches</h2>
+    <ul class="list-unstyled small">
+      {% for h in history %}<li class="text-body-secondary"><code>{{ h.query_json }}</code> → {{ h.result_count }} result(s) · {{ h.created_at }}</li>{% endfor %}
+    </ul>
+  {% endif %}
+</div>
+{% endblock %}

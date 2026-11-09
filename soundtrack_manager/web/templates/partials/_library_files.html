@@ -1,0 +1,11 @@
+{% set fb = {'ok':'text-bg-success','unverified':'text-bg-secondary','missing':'text-bg-danger','size_mismatch':'text-bg-danger','hash_mismatch':'text-bg-danger'} %}
+<table class="table table-sm small mb-0">
+  <thead><tr><th>File</th><th>Status</th><th>Size</th><th>Expected</th><th>SHA-256</th></tr></thead>
+  <tbody>
+  {% for f in files %}
+    <tr><td>{{ f.rel_path }}</td><td><span class="badge {{ fb[f.status] }}">{{ f.status }}</span></td>
+      <td>{{ f.size if f.size is not none else '—' }}</td><td>{{ f.expected_size if f.expected_size is not none else '' }}</td>
+      <td><code class="small">{{ (f.sha256 or '')[:16] }}</code></td></tr>
+  {% else %}<tr><td colspan="5">No files.</td></tr>{% endfor %}
+  </tbody>
+</table>

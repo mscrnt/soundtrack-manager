@@ -1,0 +1,41 @@
+{% if job %}
+{% set fbadge = {'pending':'text-bg-light border','downloading':'text-bg-primary','completed':'text-bg-success','skipped':'text-bg-info','failed':'text-bg-danger','conflict':'text-bg-warning'} %}
+<div class="d-flex flex-wrap align-items-baseline gap-2 mb-2">
+  <h1 class="h5 mb-0 me-auto">{{ job.title }}</h1>
+  <span class="badge text-bg-secondary">{{ job.status }}</span>
+  <span class="small">{{ job.files_done }}/{{ job.files_total or '?' }} tracks · {{ job.bytes_done|human_bytes }}{% if job.bytes_total %} / {{ job.bytes_total|human_bytes }}{% endif %}{% if job.speed_text %} · {{ job.speed_text }}{% endif %}</span>
+</div>
+{% if job.dest_dir %}<p class="small mb-1">Folder: <code>{{ job.dest_dir }}</code></p>{% endif %}
+{% if job.note %}<div class="alert alert-info py-1 px-2 small">{{ job.note }}</div>{% endif %}
+{% if job.error %}<div class="alert alert-{{ 'danger' if job.status == 'failed' else 'warning' }} py-1 px-2 small">{{ job.error }}</div>{% endif %}
+<div class="mb-2">
+  {% if job.status in ('queued', 'running') %}<button class="btn btn-sm btn-outline-warning" hx-post="/jobs/{{ job.id }}/pause" hx-target="#job-files">Pause</button>{% endif %}
+  {% if job.status == 'paused' %}<button class="btn btn-sm btn-outline-primary" hx-post="/jobs/{{ job.id }}/resume" hx-target="#job-files">Resume</button>{% endif %}
+  {% if job.status in ('failed', 'cancelled') %}<button class="btn btn-sm btn-outline-primary" hx-post="/jobs/{{ job.id }}/retry" hx-target="#job-files">Retry failed tracks</button>{% endif %}
+  {% if job.files_conflict and job.status in ('completed', 'failed') %}<button class="btn btn-sm btn-outline-danger" hx-post="/jobs/{{ job.id }}/overwrite" hx-target="#job-files"
+      hx-confirm="Replace {{ job.files_conflict }} existing file(s) with the site's version? Your current copies will be overwritten.">Overwrite conflicts…</button>{% endif %}
+</div>
+{% if not files %}
+  <p class="text-body-secondary small">Tracks appear here once the worker has read the album page.</p>
+{% else %}
+<div class="table-responsive">
+<table class="table table-sm align-middle small">
+  <thead><tr><th>#</th><th>File</th><th>Format</th><th>Status</th><th class="w-progress">Progress</th><th>Size</th></tr></thead>
+  <tbody>
+  {% for f in files %}
+    {% set pct = (([f.bytes_done / f.bytes_total * 100, 100]|min) if f.bytes_total else (100 if f.status in ('completed','skipped') else 0))|round(0) %}
+    <tr>
+      <td>{{ (f.position + 1) if f.kind == 'audio' else '' }}</td>
+      <td>{{ f.rel_path or f.title }}{% if f.error %}<div class="{{ 'text-danger' if f.status == 'failed' else 'text-body-secondary' }}">{{ f.error }}</div>{% endif %}</td>
+      <td>{{ f.format or '' }}</td>
+      <td><span class="badge {{ fbadge[f.status] }}">{{ f.status }}</span></td>
+      <td><div class="progress progress-thin" role="progressbar" aria-label="Track progress" aria-valuenow="{{ pct }}" aria-valuemin="0" aria-valuemax="100">
+        <div class="progress-bar {% if f.status == 'downloading' %}progress-bar-striped progress-bar-animated{% elif f.status == 'failed' %}bg-danger{% endif %}" style="width: {{ pct }}%"></div></div></td>
+      <td class="text-nowrap">{{ f.bytes_done|human_bytes }}{% if f.bytes_total %} / {{ f.bytes_total|human_bytes }}{% endif %}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% endif %}
+{% endif %}

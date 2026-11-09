@@ -1,0 +1,77 @@
+{% if error %}{% with level=error[0], message=error[1] %}{% include "partials/_alert.html" %}{% endwith %}{% endif %}
+{% if result %}
+{% set r = result %}
+<div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+  <div class="me-auto">
+    <strong>{{ r.total }}</strong> album{{ '' if r.total == 1 else 's' }}
+    {% if r.site_total is not none and r.site_total != r.total %}<span class="text-body-secondary">(site listed {{ r.site_total }}, filtered locally)</span>{% endif %}
+    {% if r.from_cache %}<span class="badge text-bg-light border">cached</span>
+      <a href="#" class="small" hx-get="/discover/results?{{ base_qs }}&refresh=1" hx-target="#results" hx-indicator="#search-spinner">refresh from site</a>{% endif %}
+  </div>
+</div>
+{% for n in r.notes %}<div class="alert alert-info py-1 px-2 small mb-2">{{ n }}</div>{% endfor %}
+
+{% if r.total == 0 %}
+  <p class="text-body-secondary">No albums matched. (Some albums have been removed from the site, so a franchise can return fewer results than you'd expect.)</p>
+{% else %}
+<form id="queue-form" hx-post="/queue/add" hx-target="#queue-msg">
+  <div class="d-flex flex-wrap align-items-center gap-2 mb-2 sticky-actions">
+    <div class="form-check mb-0">
+      <input class="form-check-input" type="checkbox" id="select-page" data-select-all="#queue-form .album-check">
+      <label class="form-check-label small" for="select-page">Select page</label>
+    </div>
+    <select class="form-select form-select-sm w-auto" name="format" aria-label="Format">
+      {% for f in formats %}<option value="{{ f }}" {% if f == preferred_format %}selected{% endif %}>{{ f|upper }}{% if f == 'flac' %} (MP3 if no FLAC){% endif %}</option>{% endfor %}
+    </select>
+    <button type="submit" class="btn btn-sm btn-success">Add selected to queue <span class="badge text-bg-light" data-selected-count>0</span></button>
+    <button type="button" class="btn btn-sm btn-outline-success"
+            hx-post="/queue/add-all" hx-include="#search-form, #queue-form [name=format]" hx-target="#queue-msg"
+            hx-confirm="Queue all {{ r.total }} matching album(s)? Albums already queued or downloaded are skipped.">
+      Queue all {{ r.total }} matching…
+    </button>
+    <div id="queue-msg" class="flex-grow-1"></div>
+  </div>
+
+  <div class="table-responsive">
+  <table class="table table-sm align-middle album-table">
+    <thead><tr>
+      <th class="w-check"></th><th class="w-thumb"></th><th>Album</th><th>Platforms</th><th>Type</th><th>Year</th><th>Tracks / formats</th><th></th>
+    </tr></thead>
+    <tbody>
+    {% for a in r.page_albums %}
+      <tr>
+        <td><input class="form-check-input album-check" type="checkbox" name="album_id" value="{{ a.id }}" aria-label="Select {{ a.title }}"></td>
+        <td>{% if a.thumb_url %}<img class="thumb" src="{{ a.thumb_url }}" alt="" loading="lazy" referrerpolicy="no-referrer">{% endif %}</td>
+        <td>
+          <a href="{{ a.url }}" target="_blank" rel="noopener noreferrer">{{ a.title }}</a>
+          {% if a.catalog_number %}<span class="small text-body-secondary">[{{ a.catalog_number }}]</span>{% endif %}
+          {% if a.id in queued_ids %}<span class="badge text-bg-secondary">in queue/library</span>{% endif %}
+        </td>
+        <td class="small">{% for p in a.platforms %}<span class="badge text-bg-light border me-1">{{ p }}</span>{% endfor %}</td>
+        <td class="small">{{ a.album_type or '—' }}</td>
+        <td class="small">{{ a.year or '—' }}</td>
+        <td class="small">{% if a.detail_fetched_at %}{{ a.track_count }} · {{ (a.formats or [])|join(', ') }}{% else %}<span class="text-body-secondary">—</span>{% endif %}</td>
+        <td><button type="button" class="btn btn-sm btn-outline-secondary"
+                    hx-get="/albums/{{ a.id }}/details" hx-target="#details-{{ a.id }}" data-toggle-row="#details-row-{{ a.id }}">Details</button></td>
+      </tr>
+      <tr id="details-row-{{ a.id }}" class="d-none details-row"><td colspan="8"><div id="details-{{ a.id }}"><span class="spinner-border spinner-border-sm"></span> Loading album page…</div></td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</form>
+
+{% if r.page_count > 1 %}
+<nav aria-label="Result pages">
+  <ul class="pagination pagination-sm flex-wrap">
+    {% set lo = [1, r.page - 4]|max %}{% set hi = [r.page_count, r.page + 4]|min %}
+    <li class="page-item {% if r.page == 1 %}disabled{% endif %}"><a class="page-link" href="/discover?{{ base_qs }}&page={{ r.page - 1 }}" hx-get="/discover/results?{{ base_qs }}&page={{ r.page - 1 }}" hx-target="#results" hx-push-url="/discover?{{ base_qs }}&page={{ r.page - 1 }}">‹</a></li>
+    {% for n in range(lo, hi + 1) %}
+    <li class="page-item {% if n == r.page %}active{% endif %}"><a class="page-link" href="/discover?{{ base_qs }}&page={{ n }}" hx-get="/discover/results?{{ base_qs }}&page={{ n }}" hx-target="#results" hx-push-url="/discover?{{ base_qs }}&page={{ n }}">{{ n }}</a></li>
+    {% endfor %}
+    <li class="page-item {% if r.page == r.page_count %}disabled{% endif %}"><a class="page-link" href="/discover?{{ base_qs }}&page={{ r.page + 1 }}" hx-get="/discover/results?{{ base_qs }}&page={{ r.page + 1 }}" hx-target="#results" hx-push-url="/discover?{{ base_qs }}&page={{ r.page + 1 }}">›</a></li>
+  </ul>
+</nav>
+{% endif %}
+{% endif %}
+{% endif %}

@@ -1,0 +1,37 @@
+[project]
+name = "soundtrack-manager"
+dynamic = ["version"]
+description = "Discover, queue and organise video game soundtrack albums from downloads.khinsider.com"
+requires-python = ">=3.12"
+readme = "README.md"
+# Pinned versions live in requirements.txt (also used by the Docker image).
+dependencies = [
+    "fastapi>=0.115,<1", "uvicorn>=0.34", "jinja2>=3.1", "python-multipart>=0.0.20",
+    "httpx>=0.28", "beautifulsoup4>=4.13", "lxml>=5.3", "rich>=13", "playwright>=1.51",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+
+[project.urls]
+Repository = "https://github.com/mscrnt/soundtrack-manager"
+
+[project.scripts]
+soundtrack-manager = "soundtrack_manager.cli:main"
+
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.dynamic]
+version = { attr = "soundtrack_manager.__version__" }
+
+[tool.setuptools.packages.find]
+include = ["soundtrack_manager*"]
+
+[tool.setuptools.package-data]
+soundtrack_manager = ["migrations/*.sql", "web/templates/**/*", "web/static/**/*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"

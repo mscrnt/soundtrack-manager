@@ -1,0 +1,9 @@
+{% if not groups %}
+  <p class="small text-body-secondary mb-0">No duplicates found. (Identical-file detection needs a deep verify.)</p>
+{% else %}
+<p class="small text-body-secondary">Shown for review only. Nothing is deleted. Remove copies yourself if you want to.</p>
+{% for g in groups %}
+  <div class="mb-2 small"><span class="badge text-bg-warning">{{ g.kind }}</span> <strong>{{ g.label }}</strong>
+    <ul class="mb-0">{% for p in g.paths %}<li><code>{{ p }}</code></li>{% endfor %}</ul></div>
+{% endfor %}
+{% endif %}
