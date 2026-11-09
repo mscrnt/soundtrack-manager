@@ -189,3 +189,7 @@ mocked CDN with Range support, and mocked FlareSolverr and LLM servers. They nev
 
 Use this tool only for downloads your account is entitled to, and keep the default request
 delay. khinsider is run by volunteers.
+
+## License
+
+[MIT](LICENSE). Vendored front-end libraries keep their own licenses: Bootstrap (MIT) and htmx (0BSD).

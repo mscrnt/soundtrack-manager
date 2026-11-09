@@ -68,6 +68,7 @@ jobs:
           labels: |
             org.opencontainers.image.title=Soundtrack Manager
             org.opencontainers.image.description=Discover, queue and download video game soundtracks from khinsider
+            org.opencontainers.image.licenses=MIT
       - uses: docker/build-push-action@v6
         with:
           context: .
