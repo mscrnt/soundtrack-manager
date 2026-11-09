@@ -1,3 +1,3 @@
 """Soundtrack discovery and download manager for downloads.khinsider.com."""
 
-__version__ = "0.1.0"
+__version__ = "0.1.1"
