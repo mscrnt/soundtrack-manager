@@ -163,7 +163,7 @@ git tag -a v0.1.1 -m "v0.1.1" && git push origin v0.1.1
 ```
 
 The **Release** workflow runs the tests, checks that the tag matches `__version__`, builds
-and pushes the multi-arch image (`:0.1.1`, `:0.1`, `:latest`, plus `:1` once at 1.x; pre-releases like
+and pushes the multi-arch image (`:0.1.1`, `:0.1`, `:0`, `:latest`; pre-releases like
 `v1.0.0-rc.1` skip `:latest`), and creates a GitHub Release with generated notes. **CI** runs
 the tests on Linux and Windows, plus a Docker build, for every push and pull request.
 
