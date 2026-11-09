@@ -59,14 +59,15 @@ services:
       retries: 3
 
   # Handles the site's Cloudflare check for the app. It is reachable only from the
-  # app on this compose network (no published port). Keep LOG_LEVEL at info:
-  # debug logging can include request bodies, such as the login form.
+  # app on this compose network (no published port).
+  # SECURITY: at INFO level FlareSolverr logs every request body, and the login
+  # request body contains your khinsider password. Keep this at "warning".
   flaresolverr:
     image: ghcr.io/flaresolverr/flaresolverr:v3.5.2
     restart: unless-stopped
     init: true
     environment:
-      LOG_LEVEL: info
+      LOG_LEVEL: warning
       TZ: ${TZ:-UTC}
     shm_size: 1gb
     security_opt:

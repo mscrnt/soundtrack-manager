@@ -76,7 +76,7 @@ The badge in the top-right corner shows which backend is in use.
 * Disable FlareSolverr: `FLARESOLVERR_URL=` (empty) in `.env`.
 * Native runs default to `http://127.0.0.1:8191`:
   `docker run -d --name flaresolverr -p 127.0.0.1:8191:8191 ghcr.io/flaresolverr/flaresolverr:v3.5.2`.
-* Keep FlareSolverr at `LOG_LEVEL=info`. Debug logging can include request bodies, such as the login form.
+* **Keep FlareSolverr at `LOG_LEVEL=warning`** (the compose default). At `info` it logs every request body, and the login request contains your password.
 * If you see "FlareSolverr returned the site's check page", update its image tag in `compose.yaml`.
 
 ## Native setup (Windows / Linux / macOS)
