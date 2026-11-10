@@ -1,7 +1,13 @@
 # Soundtrack Manager
 
+[![Latest release](https://img.shields.io/github/v/release/mscrnt/soundtrack-manager?sort=semver&label=release)](https://github.com/mscrnt/soundtrack-manager/releases/latest)
+[![Downloads](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fmscrnt%2Fsoundtrack-manager%2Fbadges%2Fdownloads.json)](https://github.com/mscrnt/soundtrack-manager/pkgs/container/soundtrack-manager)
 [![CI](https://github.com/mscrnt/soundtrack-manager/actions/workflows/ci.yml/badge.svg)](https://github.com/mscrnt/soundtrack-manager/actions/workflows/ci.yml)
 [![Release](https://github.com/mscrnt/soundtrack-manager/actions/workflows/release.yml/badge.svg)](https://github.com/mscrnt/soundtrack-manager/actions/workflows/release.yml)
+[![License: MIT](https://img.shields.io/github/license/mscrnt/soundtrack-manager)](LICENSE)
+[![Python 3.12+](https://img.shields.io/badge/python-3.12%2B-3776AB?logo=python&logoColor=white)](#native-setup-windows--linux--macos)
+[![Docker amd64 | arm64](https://img.shields.io/badge/docker-amd64%20%7C%20arm64-2496ED?logo=docker&logoColor=white)](#quick-start-docker)
+[![MCP server](https://img.shields.io/badge/MCP-server-8A2BE2)](#api-and-mcp-server)
 
 A self-hosted download manager for video game soundtracks from
 [downloads.khinsider.com](https://downloads.khinsider.com). Search and filter albums,
