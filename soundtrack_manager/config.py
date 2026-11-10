@@ -133,6 +133,15 @@ class Settings:
     khinsider_username: str | None = None
     khinsider_password: Secret = field(default_factory=lambda: Secret(None))
 
+    # Programmatic access. Both are off by default.
+    api_enabled: bool = False          # REST API + Swagger docs at /api/v1
+    mcp_enabled: bool = False          # MCP server (streamable HTTP) at /mcp
+    # Optional. If set, /api and /mcp accept it as a bearer token (as well as the web login).
+    # If unset they use the web login (WEB_PASSWORD) when there is one, else they are open
+    # to this machine only (Host must be loopback or listed in API_ALLOWED_HOSTS).
+    api_token: Secret = field(default_factory=lambda: Secret(None))
+    api_allowed_hosts: list[str] = field(default_factory=list)  # extra Host names, e.g. a compose service name
+
     @property
     def db_path(self) -> Path:
         return self.data_dir / "soundtrack-manager.sqlite3"
@@ -182,6 +191,9 @@ class Settings:
             raise ValueError("FETCH_MODE=flaresolverr needs FLARESOLVERR_URL")
         if self.flaresolverr_url and not self.flaresolverr_url.startswith(("http://", "https://")):
             raise ValueError("FLARESOLVERR_URL must be an http(s) URL")
+        if self.api_token and len(self.api_token.get()) < 16:
+            raise ValueError("API_TOKEN must be at least 16 characters (e.g. `python -c \"import secrets; "
+                             "print(secrets.token_urlsafe(32))\"`)")
         if self.network_exposed and not self.auth_enabled and not self.web_allow_insecure:
             raise ValueError(
                 "The web UI is reachable from the network but WEB_PASSWORD is not set. "
@@ -224,6 +236,11 @@ def load_settings() -> Settings:
         browser_sandbox=_bool("BROWSER_SANDBOX", False),
         khinsider_username=_env("KHINSIDER_USERNAME"),
         khinsider_password=read_secret("KHINSIDER_PASSWORD"),
+        api_enabled=_bool("API_ENABLED", False),
+        mcp_enabled=_bool("MCP_ENABLED", False),
+        api_token=read_secret("API_TOKEN"),
+        api_allowed_hosts=[h.strip().lower() for h in re.split(r"[;,\s]", _env("API_ALLOWED_HOSTS", "") or "")
+                           if h.strip()],
     )
     s.validate()
     return s

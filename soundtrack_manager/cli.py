@@ -413,6 +413,40 @@ def build_parser() -> argparse.ArgumentParser:
     q.add_argument("--format", "-f", choices=list(FORMATS))
     q.add_argument("--yes", action="store_true", help="don't ask for confirmation")
     sp.set_defaults(func=cmd_library)
+
+    sp = sub.add_parser("import", help="import a shopping list (.txt) or CSV, match it, queue the matches")
+    isub = sp.add_subparsers(dest="action", required=True)
+    for name, hlp in (("check", "check a list file without importing (exit 1 if rows have errors)"),
+                      ("convert", "convert a list file to the import CSV format"),
+                      ("add", "import a list file and match it against the site")):
+        q = isub.add_parser(name, help=hlp)
+        q.add_argument("file")
+        q.add_argument("--read-as", choices=["auto", "text", "csv"], default="auto")
+        if name == "convert":
+            q.add_argument("--output", "-o", help="default: same name with .csv")
+        if name == "add":
+            q.add_argument("--format", "-f", choices=list(FORMATS))
+            q.add_argument("--name")
+            q.add_argument("--include-done", action="store_true", help="also import entries checked off with [x]")
+    isub.add_parser("lists", help="list imported lists")
+    q = isub.add_parser("resume", help="continue matching a list")
+    q.add_argument("id", type=int)
+    q = isub.add_parser("show", help="show a list's entries")
+    q.add_argument("id", type=int)
+    q.add_argument("--status", choices=["pending", "matched", "ambiguous", "not_found", "error", "skipped", "queued",
+                                        "review", "no_format"])
+    q = isub.add_parser("choose", help="set the album for an entry")
+    q.add_argument("id", type=int, help="list id")
+    q.add_argument("entry", type=int, help="entry id (first column of `import show`)")
+    q.add_argument("album", help="album id (from the candidates) or album URL")
+    q = isub.add_parser("queue", help="queue the matched albums in priority order")
+    q.add_argument("id", type=int)
+    q.add_argument("--include-no-format", action="store_true", help="also queue albums without the format (MP3)")
+    q.add_argument("--yes", action="store_true")
+    q = isub.add_parser("export", help="write match results as CSV")
+    q.add_argument("id", type=int)
+    q.add_argument("--output", "-o")
+    sp.set_defaults(func=cmd_import)
     return p
 
 
@@ -512,6 +546,135 @@ def cmd_library(args) -> int:
         return 0
 
     return _run(go)
+
+
+def _print_check(parsed, path) -> None:
+    s = parsed.summary()
+    pri = ", ".join(f"{'no priority' if k == 'none' else 'P' + k}: {v}" for k, v in sorted(s["by_priority"].items()))
+    console.print(f"[bold]{path}[/] reads as {'CSV' if s['source_format'] == 'csv' else 'a text list'}: "
+                  f"{s['entries']} entries ({pri})" + (f", {s['done']} checked off" if s["done"] else "")
+                  + (f", {s['with_album_url']} with an album URL" if s["with_album_url"] else ""))
+    colors = {"error": "red", "warning": "yellow", "info": "dim"}
+    for i in parsed.issues:
+        console.print(f"[{colors[i.level]}]{i.level}[/] " + (f"line {i.line}: " if i.line else "") + i.message)
+
+
+def cmd_import(args) -> int:
+    from pathlib import Path
+
+    from .imports import ImportFormatError, parse_import, to_csv
+
+    def load():
+        p = Path(args.file)
+        try:
+            data = p.read_bytes()
+        except OSError as exc:
+            raise ValueError(f"can't read {p}: {exc}") from exc
+        return parse_import(data, p.name, source_format=None if args.read_as == "auto" else args.read_as), p
+
+    if args.action in ("check", "convert"):
+        try:
+            parsed, p = load()
+        except (ImportFormatError, ValueError) as exc:
+            console.print(f"[red]Can't import this file:[/] {exc}")
+            return 2
+        _print_check(parsed, p)
+        if args.action == "check":
+            return 1 if parsed.errors else 0
+        out = Path(args.output) if args.output else p.with_suffix(".csv")
+        if out.resolve() == p.resolve():
+            console.print("[red]Error:[/] the output would overwrite the input; pass another path with -o")
+            return 2
+        out.write_text(to_csv(parsed), encoding="utf-8", newline="")
+        console.print(f"[green]Wrote {len(parsed.entries)} entries to {out}[/]")
+        return 0
+
+    async def go(ctx):
+        imp = ctx.imports
+        if args.action == "add":
+            try:
+                parsed, p = load()
+            except ImportFormatError as exc:
+                console.print(f"[red]Can't import this file:[/] {exc}")
+                return 2
+            _print_check(parsed, p)
+            fmt = args.format or ctx.settings.preferred_format
+            lid = imp.create(parsed, name=args.name or p.name, fmt=fmt, include_done=args.include_done)
+            console.print(f"Created import list {lid} ({fmt.upper()}). Matching… "
+                          f"(Ctrl+C stops; `import resume {lid}` continues)")
+            return await _match_live(ctx, lid)
+        if args.action == "lists":
+            t = Table(title="Import lists")
+            for col in ("ID", "Name", "Status", "Format", "Matched", "Review", "Queued", "Skipped", "Pending"):
+                t.add_column(col)
+            for row in imp.lists():
+                n = row["counts"]
+                t.add_row(str(row["id"]), row["name"], row["status"], row["format"], str(n["matched"]),
+                          str(n["ambiguous"] + n["not_found"] + n["error"]), str(n["queued"]), str(n["skipped"]),
+                          str(n["pending"]))
+            console.print(t)
+            return 0
+        info = imp.get(args.id)
+        if info is None:
+            raise ValueError(f"unknown import list {args.id}")
+        if args.action == "resume":
+            imp._set_list(args.id, status="matching", error=None)
+            return await _match_live(ctx, args.id)
+        if args.action == "show":
+            t = Table(title=f"{info['name']} ({info['status']})")
+            for col in ("Entry", "#", "P", "From your list", "Status", "Site album / candidates", "Score", "Formats"):
+                t.add_column(col, overflow="fold")
+            for e in imp.entries(args.id, args.status):
+                album = e["album_title"] or "; ".join(f"[{c['album_id']}] {c['title']}" for c in e["candidates"][:3])
+                no_fmt = f" (no {info['format'].upper()})" if e["has_format"] == 0 else ""
+                t.add_row(str(e["id"]), str(e["position"] + 1), str(e["priority"] or ""), e["title"], e["status"],
+                          album, f"{e['score']:.2f}" if e["score"] is not None else "",
+                          " ".join(e["formats"] or []) + no_fmt)
+            console.print(t)
+            console.print(info["counts"])
+            return 0
+        if args.action == "choose":
+            e = (await imp.choose(args.entry, int(args.album)) if args.album.isdigit()
+                 else await imp.choose_url(args.entry, args.album))
+            console.print(f"Entry {args.entry}: {e['title']} → {e['album_title']}")
+            return 0
+        if args.action == "queue":
+            extra = f" (plus {info['no_format']} without it)" if args.include_no_format and info["no_format"] else ""
+            if not args.yes and not Confirm.ask(
+                    f"Queue {info['queueable']} matched album(s) as {info['format'].upper()}{extra}?", default=False):
+                return 0
+            r = imp.queue(args.id, include_without_format=args.include_no_format)
+            console.print(f"Queued {r['queued']}; already queued {r['already_queued']}; already downloaded "
+                          f"{r['already_downloaded']}; skipped (format not offered) {r['skipped_no_format']}. "
+                          "Run `python main.py download` or use the web UI.")
+            return 0
+        # export
+        out = Path(args.output) if args.output else Path(f"import-{args.id}-results.csv")
+        out.write_text(imp.export_csv(args.id), encoding="utf-8", newline="")
+        console.print(f"Wrote {out}")
+        return 0
+
+    return _run(go)
+
+
+async def _match_live(ctx, lid: int) -> int:
+    imp = ctx.imports
+    task = asyncio.create_task(imp.match_list(lid))
+    with console.status("Matching…") as st:
+        while not task.done():
+            info = imp.get(lid)
+            n = info["counts"]
+            st.update(f"Matching {info['done']}/{info['total']} · {n['matched']} matched · "
+                      f"{n['ambiguous']} to choose · {n['not_found']} not found")
+            await asyncio.wait({task}, timeout=1)
+    task.result()
+    info = imp.get(lid)
+    n = info["counts"]
+    console.print(f"[green]Done:[/] {n['matched']} matched ({info['no_format']} without {info['format'].upper()}), "
+                  f"{n['ambiguous']} to choose, {n['not_found']} not found, {n['error']} error(s), {n['skipped']} skipped.")
+    console.print(f"Review: `python main.py import show {lid} --status review` (or the web UI), "
+                  f"then `python main.py import queue {lid}`")
+    return 0
 
 
 def main(argv: list[str] | None = None) -> int:

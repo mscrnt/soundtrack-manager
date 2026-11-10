@@ -37,7 +37,7 @@ services:
     volumes:
       - ${DATA_DIR:-./data}:/data
       - ${DOWNLOAD_DIR:-./downloads}:/downloads
-      # Optional secret files: khinsider_password, web_password, llm_api_key (one value per file).
+      # Optional secret files: khinsider_password, web_password, api_token, llm_api_key (one value per file).
       - ${SECRETS_DIR:-./secrets}:/run/secrets:ro
       # Optional: an existing soundtrack collection to scan (read-only). Then set
       # LIBRARY_EXTRA_DIRS=/library in .env.

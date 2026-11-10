@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}{{ imp.name if imp else 'Import' }} · Soundtrack Manager{% endblock %}
+{% block content %}
+{% if not imp %}
+  <div class="alert alert-warning">Unknown import list. <a href="/imports">Back to imports</a></div>
+{% else %}
+<div class="d-flex flex-wrap align-items-baseline gap-2 mb-2">
+  <h1 class="h4 mb-0 me-auto"><a class="text-decoration-none" href="/imports">Import</a> › {{ imp.name }}</h1>
+  <a class="btn btn-sm btn-outline-secondary" href="/imports/{{ imp.id }}/export.csv">Export results (CSV)</a>
+  <button class="btn btn-sm btn-outline-danger" hx-post="/imports/{{ imp.id }}/delete"
+          hx-confirm="Delete this import list? Downloads already queued are kept.">Delete list</button>
+</div>
+
+<div id="import-progress" hx-get="/imports/{{ imp.id }}/progress" hx-trigger="refresh-entries from:body">{% include "partials/_import_progress.html" %}</div>
+<div id="queue-msg"></div>
+
+<form class="d-flex flex-wrap align-items-center gap-2 my-2" id="entry-filter" hx-get="/imports/{{ imp.id }}/entries"
+      hx-target="#entries" hx-trigger="change, input changed delay:400ms from:#entry-q, submit">
+  <div class="btn-group btn-group-sm flex-wrap" role="group" aria-label="Filter entries">
+    {% for val, label in [('', 'All'), ('review', 'Needs review'), ('matched', 'Matched'), ('no_format', 'Format not offered'),
+                          ('queued', 'Queued'), ('skipped', 'Skipped'), ('pending', 'Pending')] %}
+      <input type="radio" class="btn-check" name="status" id="st-{{ val or 'all' }}" value="{{ val }}" {% if status == val %}checked{% endif %}>
+      <label class="btn btn-outline-secondary" for="st-{{ val or 'all' }}">{{ label }}</label>
+    {% endfor %}
+  </div>
+  <input class="form-control form-control-sm w-auto" type="search" id="entry-q" name="q" value="{{ q }}" placeholder="Filter titles">
+</form>
+<div id="entries" hx-get="/imports/{{ imp.id }}/entries" hx-trigger="load, refresh-entries from:body" hx-include="#entry-filter">
+  <span class="spinner-border spinner-border-sm"></span>
+</div>
+{% endif %}
+{% endblock %}

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import os
 from dataclasses import replace
@@ -10,6 +11,7 @@ from . import queue
 from .config import FORMATS, RUNTIME_KEYS, Settings, load_settings
 from .db import Database
 from .discovery import DiscoveryService
+from .imports import ImportService
 from .khinsider.client import KhinsiderClient
 from .khinsider.fetch import (AutoFetcher, BackendUnavailable, BrowserFetcher, Fetcher, FlareSolverrFetcher,
                               HttpFetcher, RateLimiter, SessionStatus)
@@ -45,6 +47,7 @@ class AppContext:
         REDACTOR.add_secret(self.base_settings.web_password.get())
         REDACTOR.add_secret(self.base_settings.khinsider_password.get())
         REDACTOR.add_secret(self.base_settings.llm_api_key.get())
+        REDACTOR.add_secret(self.base_settings.api_token.get())
         self.db = Database(self.base_settings.db_path)
         applied = self.db.migrate()
         if applied:
@@ -65,6 +68,8 @@ class AppContext:
         self.discovery = DiscoveryService(
             self.db, self.client, cache_ttl_hours=self.settings.cache_ttl_hours,
             max_browse_pages=self.settings.discover_max_pages)
+        self.imports = ImportService(self.db, self.discovery)
+        self._import_tasks: dict[int, asyncio.Task] = {}
 
     def effective_settings(self) -> Settings:
         overrides = {k: v for k, v in self.db.get_overrides().items() if k in RUNTIME_KEYS}
@@ -134,11 +139,43 @@ class AppContext:
             return ok
         raise ValueError("login needs FlareSolverr (FLARESOLVERR_URL) or the browser session (FETCH_MODE=auto/browser)")
 
+    def start_import_matching(self, list_id: int) -> None:
+        """Match an import list in the background (one list at a time; the rest wait their turn)."""
+        task = self._import_tasks.get(list_id)
+        if task is not None and not task.done():
+            return
+
+        async def run():
+            try:
+                await self.imports.match_list(list_id)
+            except asyncio.CancelledError:
+                raise
+            except Exception:
+                pass  # recorded on the list (status 'failed', error text)
+
+        self._import_tasks[list_id] = asyncio.create_task(run(), name=f"import-{list_id}")
+
+    def resume_import_matching(self) -> int:
+        ids = self.imports.lists_to_resume()
+        for lid in ids:
+            self.start_import_matching(lid)
+        return len(ids)
+
+    def matching_now(self, list_id: int) -> bool:
+        task = self._import_tasks.get(list_id)
+        return task is not None and not task.done()
+
     def wake_worker(self) -> None:
         if self.worker is not None:
             self.worker.wake()
 
     async def close(self) -> None:
+        # Interrupted import lists stay 'matching' and continue at the next start.
+        tasks = [t for t in self._import_tasks.values() if not t.done()]
+        for t in tasks:
+            t.cancel()
+        if tasks:
+            await asyncio.gather(*tasks, return_exceptions=True)
         if self.worker is not None:
             await self.worker.stop()
             self.worker = None

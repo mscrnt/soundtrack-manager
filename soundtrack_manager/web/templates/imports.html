@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+{% block title %}Import · Soundtrack Manager{% endblock %}
+{% block content %}
+<div class="d-flex flex-wrap align-items-baseline gap-3 mb-3">
+  <h1 class="h4 mb-0 me-auto">Import a list</h1>
+  <span class="small text-body-secondary">Templates:
+    <a href="/imports/templates/import-template.csv">CSV</a> ·
+    <a href="/imports/templates/import-template.txt">text list</a></span>
+</div>
+
+<div class="row g-3 mb-3">
+  <div class="col-12 col-xl-7">
+    <div class="card">
+      <div class="card-header">List file</div>
+      <div class="card-body">
+        <form id="import-form" hx-post="/imports" hx-encoding="multipart/form-data" hx-target="#import-msg"
+              hx-indicator="#import-spin">
+          <div class="row g-2 mb-2">
+            <div class="col-12 col-md-7">
+              <label class="form-label small mb-1" for="file">Upload a .txt or .csv file</label>
+              <input class="form-control form-control-sm" type="file" id="file" name="file" accept=".txt,.csv,.tsv,text/plain,text/csv">
+            </div>
+            <div class="col-6 col-md-3">
+              <label class="form-label small mb-1" for="source_format">Read as</label>
+              <select class="form-select form-select-sm" id="source_format" name="source_format">
+                <option value="auto">Detect</option><option value="text">Text list</option><option value="csv">CSV</option>
+              </select>
+            </div>
+            <div class="col-6 col-md-2">
+              <label class="form-label small mb-1" for="format">Download as</label>
+              <select class="form-select form-select-sm" id="format" name="format">
+                {% for f in formats %}<option value="{{ f }}" {% if f == preferred_format %}selected{% endif %}>{{ f|upper }}</option>{% endfor %}
+              </select>
+            </div>
+          </div>
+          <label class="form-label small mb-1" for="content">…or paste the list</label>
+          <textarea class="form-control form-control-sm font-monospace mb-2" id="content" name="content" rows="6"
+                    placeholder="[ ]   1. Chrono Cross Original Soundtrack&#10;           https://downloads.khinsider.com/search?search=Chrono+Cross&#10;&#10;or CSV:  title,platform,year,priority"></textarea>
+          <div class="row g-2 align-items-end">
+            <div class="col-12 col-md-5">
+              <label class="form-label small mb-1" for="name">Name (optional)</label>
+              <input class="form-control form-control-sm" id="name" name="name" maxlength="120" placeholder="defaults to the file name">
+            </div>
+            <div class="col-auto form-check ms-2">
+              <input class="form-check-input" type="checkbox" id="include_done" name="include_done" value="1">
+              <label class="form-check-label small" for="include_done">Include entries checked off ([x])</label>
+            </div>
+            <div class="col-auto ms-auto d-flex gap-2">
+              <button class="btn btn-sm btn-outline-secondary" type="button" hx-post="/imports/check"
+                      hx-encoding="multipart/form-data" hx-include="#import-form" hx-target="#import-msg"
+                      hx-indicator="#import-spin">Check file</button>
+              <button class="btn btn-sm btn-primary" type="submit">Import &amp; match</button>
+              <span id="import-spin" class="spinner-border spinner-border-sm htmx-indicator align-self-center"></span>
+            </div>
+          </div>
+        </form>
+        <div id="import-msg" class="mt-2"></div>
+      </div>
+    </div>
+  </div>
+  <div class="col-12 col-xl-5">
+    <div class="card h-100">
+      <div class="card-header">How it works</div>
+      <div class="card-body small">
+        <ol class="mb-2 ps-3">
+          <li><strong>Check</strong> reads the file and reports problems without importing anything.</li>
+          <li><strong>Import</strong> searches the site for each entry and scores the results against the full
+            title. Generic words (“Original Soundtrack”, “OST”) don't count, numbers must agree, and a year or
+            platform in the title, e.g. <code>(1996)</code> or <code>(NES)</code>, helps.</li>
+          <li>A clear winner is matched automatically and its album page is checked for the format you want.
+            Close calls wait for you under <em>Needs review</em>.</li>
+          <li><strong>Queue</strong> sends the matches to Downloads in priority order.</li>
+        </ol>
+        <p class="mb-0 text-body-secondary">One site search per entry, at the normal request pace, so a 500-entry
+          list takes a while. Matching continues after a restart.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<h2 class="h6">Imported lists</h2>
+{% if not lists %}
+  <p class="small text-body-secondary">Nothing imported yet.</p>
+{% else %}
+<table class="table table-sm small align-middle">
+  <thead><tr><th>List</th><th>Status</th><th>Entries</th><th>Matched</th><th>Needs review</th><th>Queued</th><th>Created</th></tr></thead>
+  <tbody>
+  {% for l in lists %}{% set n = l.counts %}
+    <tr>
+      <td><a href="/imports/{{ l.id }}">{{ l.name }}</a> <span class="text-body-secondary">({{ l.source_format }}, {{ l.format|upper }})</span></td>
+      <td>{{ l.status }}{% if l.status == 'matching' %} · {{ n.pending }} left{% endif %}</td>
+      <td>{{ n.values()|sum }}</td><td>{{ n.matched }}</td><td>{{ n.ambiguous + n.not_found + n.error }}</td>
+      <td>{{ n.queued }}</td><td>{{ l.created_at }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,28 @@
+MY SOUNDTRACK SHOPPING LIST
+===========================
+# Template for Import (web UI) or `python main.py import add <file>`. Lines starting with # are ignored,
+# and so is any line without a [ ] checkbox or a number.
+#
+# An entry is:   [ ]  N. Album title as you'd write it  - optional note (two spaces, dash, space)
+# followed by an optional khinsider search URL or album URL on the next line.
+# Mark an entry [x] once you have it; checked entries are skipped on import.
+# A platform or year in brackets, e.g. (NES) or (1998), helps pick the right album.
+
+
+PRIORITY 1 - BROKEN / DAMAGED
+-----------------------------
+[ ]   1. Example Game Original Soundtrack  - track 5 was corrupt
+           https://downloads.khinsider.com/search?search=Example+Game
+
+PRIORITY 2 - INCOMPLETE ALBUMS
+------------------------------
+[ ]   2. Another Game (SNES) Soundtrack
+[ ]   3. Third Game II Original Soundtrack (1998)
+           https://downloads.khinsider.com/search?search=Third+Game+II
+
+PRIORITY 3 - NEW ALBUMS
+-----------------------
+[ ]   4. Some Series - Arranged Album
+[x]   5. Already Downloaded Game Soundtrack
+[ ]   6. Exact Album By URL
+           https://downloads.khinsider.com/game-soundtracks/album/replace-with-the-album-slug

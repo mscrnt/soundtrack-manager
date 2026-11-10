@@ -23,6 +23,22 @@
       </div>
     </div>
     <div class="card mb-3">
+      <div class="card-header">API &amp; MCP (for other programs and AI agents)</div>
+      <div class="card-body small">
+        {% set base = request.base_url|string %}
+        <p class="mb-1">REST API: {% if s.api_enabled %}<span class="badge text-bg-success">on</span>
+          <code>{{ base }}api/v1</code> · <a href="/api/v1/docs" target="_blank" rel="noopener">Swagger docs</a>
+          {% else %}<span class="badge text-bg-secondary">off</span> (<code>API_ENABLED=true</code>){% endif %}</p>
+        <p class="mb-1">MCP server: {% if s.mcp_enabled %}<span class="badge text-bg-success">on</span> <code>{{ base }}mcp</code>
+          {% else %}<span class="badge text-bg-secondary">off</span> (<code>MCP_ENABLED=true</code>){% endif %}</p>
+        <p class="mb-2">Access: {% if s.api_token %}API token or web login{% elif s.auth_enabled %}web login{% else %}this machine only (no token or web password set){% endif %}</p>
+        {% if s.mcp_enabled %}
+        <p class="mb-1">Add it to Claude Code:</p>
+        <pre class="bg-body-tertiary p-2 mb-0"><code>claude mcp add --transport http soundtracks {{ base }}mcp{% if s.api_token %} --header "Authorization: Bearer $API_TOKEN"{% endif %}</code></pre>
+        {% endif %}
+      </div>
+    </div>
+    <div class="card mb-3">
       <div class="card-header">Effective configuration (read-only; from <code>.env</code>)</div>
       <div class="card-body p-0">
         <table class="table table-sm small mb-0">

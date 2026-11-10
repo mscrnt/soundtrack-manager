@@ -20,6 +20,10 @@ macOS and Unraid, with a web UI and a CLI.
 * **Library:** scan and deep-verify folders, find duplicates and missing or damaged albums,
   import your khinsider account history, and queue recoveries. **Nothing is ever deleted,
   and existing files are only overwritten after you confirm.**
+* **Import lists:** upload a shopping list (`.txt`) or a CSV and the app finds each album on the
+  site, checks that FLAC is offered, lets you settle close calls, and queues the rest in priority order.
+* **API and MCP:** an optional JSON API with Swagger docs, and an MCP server so AI agents can
+  search, import lists and queue downloads.
 * **Optional AI:** turns a request like "PS1 survival horror soundtracks 1996–2000" into
   normal searches through any OpenAI-compatible local server (Ollama, LM Studio, …).
 
@@ -36,7 +40,7 @@ docker compose pull && docker compose up -d     # released image
 
 Open <http://127.0.0.1:8080>. Downloads continue after you close the browser. The
 queue, settings, browser/FlareSolverr session and logs are kept in `DATA_DIR`, so
-restarts and upgrades lose nothing. Pin a version with `APP_VERSION=0.1.0` in `.env`.
+restarts and upgrades lose nothing. Pin a version with `APP_VERSION=0.2.0` in `.env`.
 
 * **Windows (Docker Desktop):** use forward slashes in `.env`, e.g. `DOWNLOAD_DIR=D:/Music/Soundtracks`.
 * **Unraid:** `PUID=99`, `PGID=100`, `DATA_DIR=/mnt/user/appdata/soundtrack-manager`,
@@ -47,6 +51,25 @@ restarts and upgrades lose nothing. Pin a version with `APP_VERSION=0.1.0` in `.
   `LIBRARY_EXTRA_DIRS=/library`.
 
 Images: `ghcr.io/mscrnt/soundtrack-manager:<version>` / `:latest`, for linux/amd64 and linux/arm64.
+
+### Updating
+
+Already running it with Docker Compose? From the `soundtrack-manager` folder:
+
+```sh
+git pull                 # newest compose.yaml and .env.example
+docker compose pull      # newest released image
+docker compose up -d     # restart with it
+```
+
+* The database upgrades itself on the first start, and downloads in progress resume.
+  `.env`, `secrets/`, your data and downloads are left alone.
+* If you pinned a version (`APP_VERSION=` in `.env`), change it first.
+* Built from source instead? Run `git pull && docker compose up -d --build`.
+* New settings appear in `.env.example`. Copy over the ones you want; everything new is off or has a default.
+* Optional: `docker image prune` removes the old image afterwards.
+
+[CHANGELOG.md](CHANGELOG.md) explains what changed in each release.
 
 ### Logging in to khinsider (optional; needed for history import)
 
@@ -78,6 +101,86 @@ The badge in the top-right corner shows which backend is in use.
   `docker run -d --name flaresolverr -p 127.0.0.1:8191:8191 ghcr.io/flaresolverr/flaresolverr:v3.5.2`.
 * **Keep FlareSolverr at `LOG_LEVEL=warning`** (the compose default). At `info` it logs every request body, and the login request contains your password.
 * If you see "FlareSolverr returned the site's check page", update its image tag in `compose.yaml`.
+
+## Import lists
+
+**Import** (or `python main.py import add my-list.txt`) takes a list of albums and downloads them all.
+Templates are in [`examples/`](examples/); their README documents every CSV column.
+
+* **Text lists:** numbered `[ ]` entries, optional `PRIORITY N` headings, a note after two spaces and a
+  dash, and an optional khinsider search or album URL on the next line. `[x]` entries are skipped.
+* **CSV:** a header row, with `title` (or `url`) required and `search`, `platform`, `year`, `format`,
+  `priority`, `section`, `note` and `done` optional. Comma, semicolon and tab delimiters all work.
+
+**Check file** (`import check`) reports unreadable rows, unknown formats or platforms, bad years and
+duplicates without importing anything. `import convert list.txt` writes the same list as CSV.
+
+**How matching works:** each entry runs one site search: its URL's term, the `search` column, or the
+title without "(…)" and "Soundtrack". Every result is then scored against the full title:
+
+* Generic words ("Original Soundtrack", "OST", "the") don't count.
+* Small spelling differences are tolerated.
+* Numbers and Roman numerals must agree (*IX* is not *X*; *2* is not *3*).
+* A year or platform in the title, e.g. `(1996)` or `(NES)`, adds to the score.
+
+So *"Dark Souls Original Soundtrack (Prepare to Die Edition)"* finds the *Prepare to Die Edition*
+album, not the plain *Dark Souls* one. A clear winner is matched automatically, and its album page is
+checked for the format you want. Close calls and no-hits go to **Needs review**: pick a candidate, paste
+an album URL, search again with another term, or skip.
+
+**Queue** adds the matches in priority order (priority 1 first), after anything you queued by hand.
+Albums without the wanted format are left out unless you tick *also queue …*, in which case they
+download as MP3. Duplicates and albums already downloaded are skipped. Matching runs in the background
+at the normal request pace (about one search plus one album page per entry) and continues after a
+restart. **Export results (CSV)** saves the outcome.
+
+## API and MCP server
+
+Both are off by default. Turn them on in `.env`:
+
+```sh
+API_ENABLED=true     # JSON API at /api/v1, Swagger docs at /api/v1/docs
+MCP_ENABLED=true     # MCP server (streamable HTTP) at /mcp
+```
+
+**Who may connect:**
+
+| Configuration | Access |
+|---|---|
+| `API_TOKEN` set (or `secrets/api_token`) | `Authorization: Bearer <token>` or `X-API-Key: <token>`; the web login also works |
+| `WEB_PASSWORD` set, no token | The web login (HTTP Basic) |
+| Neither | Open, but only to this machine: the `Host` header must be `localhost`/`127.0.0.1` (blocks DNS rebinding). Add names such as a compose service with `API_ALLOWED_HOSTS`. |
+
+In all modes, requests with a cross-site browser `Origin` are refused, so web pages can't drive the
+API. Exposing the app on the LAN already requires `WEB_PASSWORD`, so the API and MCP server are
+never open to the network.
+
+**MCP:** the tools are generated from the API routes, so they have the same names, arguments and
+checks: `search_albums`, `get_album`, `queue_albums`, `list_jobs`, `get_job`, `job_action`,
+`validate_import_list`, `create_import_list`, `get_import_list`, `list_import_entries`,
+`choose_import_album`, `research_import_entry`, `skip_or_restore_import_entry`, `queue_import_list`,
+`get_status`, `library_stats`, `library_missing`, and more. The server's instructions explain the
+import workflow to agents. To connect Claude Code:
+
+```sh
+claude mcp add --transport http soundtracks http://127.0.0.1:8080/mcp
+# with a token:  --header "Authorization: Bearer $API_TOKEN"
+```
+
+Inside this repo you can skip that step: [`.mcp.json`](.mcp.json) offers the server to Claude Code
+(and other clients that read the file), and Claude Code asks before connecting. It uses
+`SOUNDTRACK_MANAGER_URL` (default `http://127.0.0.1:8080`) and sends `API_TOKEN` from your environment
+if it's set. Without a token, an empty `Bearer` header is ignored on localhost.
+
+**REST examples:**
+
+```sh
+curl -s http://127.0.0.1:8080/api/v1/search?q=chrono+cross
+curl -s -X POST http://127.0.0.1:8080/api/v1/queue -H 'Content-Type: application/json' -d '{"album_ids":[12],"format":"flac"}'
+curl -s -X POST "http://127.0.0.1:8080/api/v1/imports?name=wishlist" -H 'Content-Type: text/csv' --data-binary @my-list.csv
+```
+
+**Settings** shows whether each is on, the access mode, and the MCP command for your address.
 
 ## Native setup (Windows / Linux / macOS)
 
@@ -121,6 +224,15 @@ python main.py library duplicates
 python main.py library missing
 python main.py library recover [ALBUM_ID...] [--format flac] [--yes]
 
+# import lists
+python main.py import check my-list.txt                 # validate only (exit 1 if rows have errors)
+python main.py import convert my-list.txt [-o out.csv]  # text list -> CSV
+python main.py import add my-list.csv [--format flac] [--include-done]   # import + match (Ctrl+C stops)
+python main.py import lists | resume <id> | show <id> [--status review]
+python main.py import choose <list-id> <entry-id> <album-id|album-url>
+python main.py import queue <id> [--include-no-format] [--yes]
+python main.py import export <id> [-o results.csv]
+
 # session / admin
 python main.py browser open|login|status
 python main.py serve [--host 127.0.0.1] [--port 8080]
@@ -159,11 +271,11 @@ Versions follow [SemVer](https://semver.org). The single source is
 
 ```sh
 # bump __version__, commit, then:
-git tag -a v0.1.1 -m "v0.1.1" && git push origin v0.1.1
+git tag -a v0.2.0 -m "v0.2.0" && git push origin v0.2.0
 ```
 
 The **Release** workflow runs the tests, checks that the tag matches `__version__`, builds
-and pushes the multi-arch image (`:0.1.1`, `:0.1`, `:0`, `:latest`; pre-releases like
+and pushes the multi-arch image (`:0.2.0`, `:0.2`, `:0`, `:latest`; pre-releases like
 `v1.0.0-rc.1` skip `:latest`), and creates a GitHub Release with generated notes. **CI** runs
 the tests on Linux and Windows, plus a Docker build, for every push and pull request.
 
@@ -186,10 +298,13 @@ mocked CDN with Range support, and mocked FlareSolverr and LLM servers. They nev
   site's rounded per-track sizes.
 * FLAC parsing is tested on a modified real page, because no FLAC album was captured.
 * The AI feature only produces search terms and filters. Results always come from the site.
+* List matching relies on the site's search. Albums the site words very differently from your list
+  (other-language titles, for example) may land in **Needs review**, or need a different search term.
 
 Use this tool only for downloads your account is entitled to, and keep the default request
 delay. khinsider is run by volunteers.
 
 ## License
 
-[MIT](LICENSE). Vendored front-end libraries keep their own licenses: Bootstrap (MIT) and htmx (0BSD).
+[MIT](LICENSE). Vendored front-end libraries keep their own licenses: Bootstrap (MIT), htmx (0BSD) and
+Swagger UI (Apache-2.0, `web/static/vendor/swagger-ui.LICENSE.txt`).

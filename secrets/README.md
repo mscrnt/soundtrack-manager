@@ -7,6 +7,8 @@ Everything in this folder except this README is git-ignored.
 |----------------------|--------------------------------------------|
 | `khinsider_password` | khinsider account password (with `KHINSIDER_USERNAME` in `.env`) |
 | `web_password`       | Web UI password (required if `WEB_BIND` is not loopback) |
+| `api_token`          | Optional bearer token for the API (`/api/v1`) and MCP server (`/mcp`) |
+| `llm_api_key`        | Optional key for the AI search's LLM server |
 
 Each file holds just the value on one line. For example:
 

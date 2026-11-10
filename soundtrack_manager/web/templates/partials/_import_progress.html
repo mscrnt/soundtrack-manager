@@ -1,0 +1,41 @@
+{% set n = imp.counts %}{% set pct = (imp.done / imp.total * 100) if imp.total else 100 %}
+<div class="card mb-2" {% if imp.status == 'matching' %}hx-get="/imports/{{ imp.id }}/progress" hx-trigger="every 2s"
+     hx-target="#import-progress" hx-swap="innerHTML"{% endif %}>
+  <div class="card-body py-2">
+    <div class="d-flex flex-wrap align-items-center gap-2 mb-2 small">
+      <span class="badge text-bg-{{ {'matching': 'primary', 'ready': 'success', 'paused': 'secondary', 'failed': 'danger'}[imp.status] }}">{{ imp.status }}</span>
+      <span>{{ imp.done }} / {{ imp.total }} checked</span>
+      <span class="text-body-secondary">·</span>
+      <span class="text-success">{{ n.matched }} matched</span>
+      <span class="text-warning-emphasis">{{ n.ambiguous }} to choose</span>
+      <span class="text-danger">{{ n.not_found }} not found{% if n.error %}, {{ n.error }} error(s){% endif %}</span>
+      <span>{{ n.queued }} queued</span>
+      <span class="text-body-secondary">{{ n.skipped }} skipped</span>
+      {% if imp.no_format %}<span class="text-warning-emphasis">{{ imp.no_format }} without {{ imp.format|upper }}</span>{% endif %}
+      <span class="ms-auto d-flex gap-2">
+        {% if imp.status == 'matching' %}
+          <button class="btn btn-sm btn-outline-secondary" hx-post="/imports/{{ imp.id }}/pause" hx-target="#import-progress">Pause</button>
+        {% elif n.pending %}
+          <button class="btn btn-sm btn-outline-primary" hx-post="/imports/{{ imp.id }}/resume" hx-target="#import-progress">
+            {{ 'Retry' if imp.status == 'failed' else 'Resume' }} matching</button>
+        {% endif %}
+      </span>
+    </div>
+    <div class="progress progress-thin mb-2" role="progressbar" aria-label="Matching progress" aria-valuenow="{{ pct|round|int }}" aria-valuemin="0" aria-valuemax="100">
+      <div class="progress-bar {% if imp.status == 'matching' %}progress-bar-striped progress-bar-animated{% endif %}" style="width: {{ pct|round(1) }}%"></div>
+    </div>
+    {% if imp.error %}<div class="alert alert-danger py-1 px-2 small mb-2">{{ imp.error }}</div>{% endif %}
+    <form class="d-flex flex-wrap align-items-center gap-2" hx-post="/imports/{{ imp.id }}/queue" hx-target="#queue-msg">
+      <button class="btn btn-sm btn-success" type="submit" {% if not imp.queueable and not imp.no_format %}disabled{% endif %}
+              hx-confirm="Queue {{ imp.queueable }} matched album(s) as {{ imp.format|upper }}?">
+        Queue {{ imp.queueable }} matched album(s) as {{ imp.format|upper }}</button>
+      {% if imp.no_format %}
+      <div class="form-check mb-0 small">
+        <input class="form-check-input" type="checkbox" id="include_without_format" name="include_without_format" value="1">
+        <label class="form-check-label" for="include_without_format">Also queue the {{ imp.no_format }} without {{ imp.format|upper }} (they download as MP3)</label>
+      </div>
+      {% endif %}
+      {% if imp.status == 'matching' %}<span class="small text-body-secondary">You can queue what's matched so far, or wait.</span>{% endif %}
+    </form>
+  </div>
+</div>

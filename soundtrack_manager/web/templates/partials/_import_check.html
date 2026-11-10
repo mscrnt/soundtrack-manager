@@ -1,0 +1,33 @@
+{% set s = summary %}
+<div class="alert alert-{{ 'warning' if s.errors else 'success' }} py-2 px-3 small mb-2">
+  <strong>{{ filename or 'Pasted list' }}</strong> reads as a <strong>{{ 'CSV' if s.source_format == 'csv' else 'text list' }}</strong>:
+  {{ s.entries }} entr{{ 'y' if s.entries == 1 else 'ies' }}
+  {%- if s.by_priority|length > 1 or 'none' not in s.by_priority %} (
+    {%- for p, n in s.by_priority|dictsort %}{{ 'no priority' if p == 'none' else 'priority ' ~ p }}: {{ n }}{{ ', ' if not loop.last }}{% endfor %})
+  {%- endif %}.
+  {% if s.with_album_url %}{{ s.with_album_url }} already point at an album page (no search needed).{% endif %}
+  {% if s.done %}{{ s.done }} checked off (skipped unless “Include entries checked off” is ticked).{% endif %}
+  {% if s.errors %}{{ s.errors }} row(s) will be left out.{% endif %}
+</div>
+{% if parsed.issues %}
+<ul class="small mb-2">
+  {% for i in parsed.issues[:50] %}
+  <li class="{{ 'text-danger' if i.level == 'error' else ('text-warning-emphasis' if i.level == 'warning' else 'text-body-secondary') }}">
+    {% if i.line %}line {{ i.line }}: {% endif %}{{ i.message }}</li>
+  {% endfor %}
+  {% if parsed.issues|length > 50 %}<li class="text-body-secondary">… and {{ parsed.issues|length - 50 }} more</li>{% endif %}
+</ul>
+{% endif %}
+<details class="small">
+  <summary>First entries</summary>
+  <table class="table table-sm small mb-0">
+    <thead><tr><th>Line</th><th>Title</th><th>Search</th><th>Hints</th><th>Priority</th><th>Note</th></tr></thead>
+    <tbody>
+    {% for e in parsed.entries[:15] %}
+      <tr><td>{{ e.line or '' }}</td><td>{{ e.title }}</td><td class="text-body-secondary">{{ e.url or e.search or '(from title)' }}</td>
+        <td>{{ [e.platform, e.year]|select|join(', ') }}</td><td>{{ e.priority if e.priority is not none else '' }}</td>
+        <td class="text-body-secondary">{{ e.note or '' }}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</details>

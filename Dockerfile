@@ -21,6 +21,7 @@ RUN python3 -m pip install --break-system-packages -r requirements.txt
 
 COPY main.py pyproject.toml ./
 COPY soundtrack_manager ./soundtrack_manager
+COPY examples ./examples
 
 # Persistent locations. Mount host directories here (see compose.yaml).
 RUN mkdir -p /data /downloads && chown pwuser:pwuser /data /downloads

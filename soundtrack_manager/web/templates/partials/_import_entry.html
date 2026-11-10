@@ -1,0 +1,74 @@
+{% set badge = {'matched': 'success', 'ambiguous': 'warning', 'not_found': 'danger', 'error': 'danger', 'pending': 'secondary',
+                'skipped': 'light border', 'queued': 'primary'}[e.status] %}
+{% set label = {'ambiguous': 'choose', 'not_found': 'not found'}.get(e.status, e.status) %}
+<tr id="entry-{{ e.id }}">
+  <td class="text-end text-body-secondary">{{ e.position + 1 }}</td>
+  <td>{{ e.priority if e.priority is not none else '' }}</td>
+  <td>
+    <div>{{ e.title }}</div>
+    <div class="text-body-secondary">
+      {% if e.note %}<em>{{ e.note }}</em> · {% endif %}searched “{{ e.search_term }}”
+      {%- if e.platform or e.year %} · hints: {{ [e.platform, e.year]|select|join(', ') }}{% endif %}
+    </div>
+    {% if error %}<div class="text-danger">{{ error }}</div>{% endif %}
+    {% if e.error %}<div class="{{ 'text-danger' if e.status == 'error' else 'text-body-secondary' }}">{{ e.error }}</div>{% endif %}
+  </td>
+  <td><span class="badge text-bg-{{ badge }}">{{ label }}</span>
+    {% if e.match_method == 'manual' %}<span class="text-body-secondary">by you</span>{% endif %}
+    {% if e.job_status %}<div><a href="/downloads/{{ e.job_id }}">download {{ e.job_status }}</a></div>{% endif %}
+    {% if e.in_library %}<div class="text-body-secondary">in library</div>{% endif %}
+  </td>
+  <td>
+    {% if e.album_id %}
+      <a href="{{ e.album_url }}" target="_blank" rel="noopener noreferrer">{{ e.album_title }}</a>
+      {% if e.album_year %}<span class="text-body-secondary">({{ e.album_year }})</span>{% endif %}
+      {% if e.score is not none %}<span class="text-body-secondary">· {{ (e.score * 100)|round|int }}%</span>{% endif %}
+      <div>
+        {% for f in e.formats or [] %}<span class="badge text-bg-light border">{{ f }}</span> {% endfor %}
+        {% if e.has_format == 0 %}<span class="text-warning-emphasis">· {{ (e.format or e.list_format)|upper }} not offered</span>{% endif %}
+        {% if e.has_format is none and e.status in ('matched', 'queued') %}<span class="text-body-secondary">· format not checked yet</span>{% endif %}
+        {% if e.album_platforms %}<span class="text-body-secondary">· {{ e.album_platforms|join(', ') }}</span>{% endif %}
+      </div>
+    {% endif %}
+    {% if e.status in ('ambiguous', 'not_found', 'error', 'matched') and e.status != 'queued' %}
+      {% set others = e.candidates|rejectattr('album_id', 'equalto', e.album_id)|list %}
+      {% if e.status != 'matched' or others %}
+      <details {% if e.status != 'matched' %}open{% endif %}>
+        <summary class="text-body-secondary">{{ 'Choose the album' if e.status != 'matched' else 'Not right? Other results' }}</summary>
+        <form class="mt-1" hx-post="/imports/entries/{{ e.id }}/choose" hx-target="#entry-{{ e.id }}" hx-swap="outerHTML">
+          {% for c in others %}
+          <div class="form-check mb-0">
+            <input class="form-check-input" type="radio" name="album_id" value="{{ c.album_id }}" id="c-{{ e.id }}-{{ c.album_id }}" {% if loop.first and e.status != 'matched' %}checked{% endif %}>
+            <label class="form-check-label" for="c-{{ e.id }}-{{ c.album_id }}">
+              {{ c.title }}{% if c.year %} ({{ c.year }}){% endif %}
+              <span class="text-body-secondary">· {{ (c.score * 100)|round|int }}%{% if c.album_type %} · {{ c.album_type }}{% endif %}
+                {%- if c.platforms %} · {{ c.platforms[:4]|join(', ') }}{% endif %}</span>
+              {% if c.url %}<a href="{{ c.url }}" target="_blank" rel="noopener noreferrer" aria-label="Open on the site">↗</a>{% endif %}
+            </label>
+          </div>
+          {% endfor %}
+          <div class="input-group input-group-sm mt-1">
+            <input class="form-control" name="url" placeholder="…or paste an album URL" aria-label="Album URL">
+            <button class="btn btn-outline-success" type="submit">Use this</button>
+          </div>
+        </form>
+        <form class="mt-1" hx-post="/imports/entries/{{ e.id }}/research" hx-target="#entry-{{ e.id }}" hx-swap="outerHTML"
+              hx-indicator="#rs-{{ e.id }}">
+          <div class="input-group input-group-sm">
+            <input class="form-control" name="search" value="{{ e.search_term }}" aria-label="Search again">
+            <button class="btn btn-outline-secondary" type="submit">Search again
+              <span id="rs-{{ e.id }}" class="spinner-border spinner-border-sm htmx-indicator"></span></button>
+          </div>
+        </form>
+      </details>
+      {% endif %}
+    {% endif %}
+  </td>
+  <td class="text-end">
+    {% if e.status == 'skipped' %}
+      <button class="btn btn-sm btn-outline-secondary" hx-post="/imports/entries/{{ e.id }}/restore" hx-target="#entry-{{ e.id }}" hx-swap="outerHTML">Restore</button>
+    {% elif e.status not in ('queued', 'pending') %}
+      <button class="btn btn-sm btn-outline-secondary" hx-post="/imports/entries/{{ e.id }}/skip" hx-target="#entry-{{ e.id }}" hx-swap="outerHTML">Skip</button>
+    {% endif %}
+  </td>
+</tr>

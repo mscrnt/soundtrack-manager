@@ -94,9 +94,32 @@ jobs:
           TAG: ${{ inputs.tag || github.ref_name }}
         run: |
           PRE=""; case "$TAG" in *-*) PRE="--prerelease";; esac
-          NOTES="Docker image: \`docker pull ${IMAGE}:${TAG#v}\`"
+          VERSION="${TAG#v}"
+          # This version's section of CHANGELOG.md ("## 0.2.0 — date" up to the next "## "), if there is one.
+          awk -v v="$VERSION" '
+            /^## / { if (found) exit; if ($2 == v) { found = 1; next } }
+            found { print }
+          ' CHANGELOG.md > notes.md || true
+          if [ ! -s notes.md ]; then echo "See the commits below." > notes.md; fi
+          {
+            echo
+            echo "## Updating"
+            echo
+            echo "If you run it with Docker Compose (recommended), from your soundtrack-manager folder:"
+            echo
+            echo '```sh'
+            echo 'git pull                 # newest compose.yaml and .env.example'
+            echo 'docker compose pull      # this release'
+            echo 'docker compose up -d     # restart with it; the database upgrades itself'
+            echo '```'
+            echo
+            echo "If you pinned a version with \`APP_VERSION\` in \`.env\`, set it to \`${VERSION}\` first."
+            echo "New here? Follow the [quick start](https://github.com/${GITHUB_REPOSITORY}#quick-start-docker)."
+            echo
+            echo "Image: \`${IMAGE}:${VERSION}\` (stable releases are also \`:latest\`), for linux/amd64 and linux/arm64."
+          } >> notes.md
           if gh release view "$TAG" >/dev/null 2>&1; then
             echo "release $TAG already exists"
           else
-            gh release create "$TAG" --title "$TAG" --generate-notes --notes "$NOTES" $PRE
+            gh release create "$TAG" --title "$TAG" --generate-notes --notes-file notes.md $PRE
           fi

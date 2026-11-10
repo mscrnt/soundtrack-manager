@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "soundtrack-manager": {
+      "type": "http",
+      "url": "${SOUNDTRACK_MANAGER_URL:-http://127.0.0.1:8080}/mcp",
+      "headers": {
+        "Authorization": "Bearer ${API_TOKEN:-}"
+      }
+    }
+  }
+}

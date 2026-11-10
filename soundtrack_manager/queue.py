@@ -1,8 +1,7 @@
-"""Persistent download queue (SQLite ``jobs`` table).
+"""Persistent download queue (SQLite ``jobs`` table): enqueue, list, state changes, crash recovery.
 
-This milestone covers queue management only: enqueue, list, cancel, remove,
-and recovery after a crash. The download worker that runs jobs comes in
-milestone 5/6 and will use these same functions.
+The download worker (downloader.py) claims jobs with :func:`claim_next`.
+Higher ``priority`` runs first; ties run in the order they were queued.
 """
 
 from __future__ import annotations
@@ -22,7 +21,8 @@ class EnqueueResult:
     missing: list[int]
 
 
-def enqueue(db: Database, album_ids: list[int], fmt: str, *, allow_completed: bool = False) -> EnqueueResult:
+def enqueue(db: Database, album_ids: list[int], fmt: str, *, allow_completed: bool = False,
+            priority: int = 0) -> EnqueueResult:
     """Queue albums. Skips any already queued or completed in this format (no duplicates across searches)."""
     res = EnqueueResult([], [], [], [])
     with db.transaction() as c:
@@ -38,7 +38,7 @@ def enqueue(db: Database, album_ids: list[int], fmt: str, *, allow_completed: bo
                     "SELECT 1 FROM jobs WHERE album_id=? AND format=? AND status='completed'", (aid, fmt)).fetchone():
                 res.already_completed.append(aid)
                 continue
-            c.execute("INSERT INTO jobs(album_id, format) VALUES (?,?)", (aid, fmt))
+            c.execute("INSERT INTO jobs(album_id, format, priority) VALUES (?,?,?)", (aid, fmt, priority))
             res.added.append(aid)
     return res
 

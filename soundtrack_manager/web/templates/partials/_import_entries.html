@@ -1,0 +1,13 @@
+{% if not entries %}
+  <p class="small text-body-secondary">No entries here.</p>
+{% else %}
+<div class="table-responsive">
+<table class="table table-sm small align-middle">
+  <thead><tr><th class="text-end">#</th><th>P</th><th>From your list</th><th>Status</th><th>Site album</th><th class="text-end">Actions</th></tr></thead>
+  <tbody>
+  {% for e in entries %}{% set error = None %}{% include "partials/_import_entry.html" %}{% endfor %}
+  </tbody>
+</table>
+</div>
+{% if entries|length >= 10000 %}<p class="small text-body-secondary">Showing the first 10000 entries.</p>{% endif %}
+{% endif %}

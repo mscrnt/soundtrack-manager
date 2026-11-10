@@ -7,8 +7,10 @@ Postgres. One user's download queue doesn't need them.
 ┌──────────────── container (non-root, read-only rootfs, no caps) ───────────────┐
 │                                                                                │
 │  uvicorn ── FastAPI (web/app.py) ── Jinja2 + HTMX pages                        │
-│                │                                                               │
+│                ├── /api/v1  REST + Swagger (web/api.py)  ◄── /mcp FastMCP tools│
+│                │                       (web/mcp.py, generated from the API)    │
 │                ├── DiscoveryService (discovery.py) ─┐                          │
+│                ├── ImportService (imports.py)       │ background match task    │
 │                ├── queue.py (jobs table)            │                          │
 │                ├── library.py · ai.py (optional)    │                          │
 │                └── DownloadWorker (downloader.py)   │ asyncio task, same       │
@@ -40,11 +42,14 @@ Postgres. One user's download queue doesn't need them.
 | `queue.py` | Persistent jobs: enqueue (de-duplicated), atomic claim, state changes, crash recovery |
 | `downloader.py` | `DownloadWorker`: resumable, verified downloads, progress/speed, pause/cancel, conflict protection |
 | `library.py` | Folder scan and verify, duplicates, missing albums, account-history import, recovery |
+| `imports.py` | List files (text/CSV): parse + validate, score site results against titles, format check, review, priority-ordered queueing, CSV export |
 | `ai.py` | Optional LLM → validated search plan (titles + filters) |
 | `paths.py` | Folder templates, Windows/Linux-safe names, traversal-proof `safe_join` |
 | `config.py` | Settings from env. `Secret` values come from `*_FILE` or `/run/secrets` |
 | `runtime.py` | `AppContext`, which wires everything for both the CLI and the web app |
-| `web/` | FastAPI app, security middleware, templates, vendored Bootstrap/HTMX |
+| `web/` | FastAPI app, security middleware (ASGI: UI auth/CSRF, API/MCP access rules), templates, vendored Bootstrap/HTMX/Swagger UI |
+| `web/api.py` | JSON API (`/api/v1`, off by default); handler names are the operation ids and MCP tool names |
+| `web/mcp.py` | MCP server: `FastMCP.from_fastapi` over the API, served at `/mcp` (off by default) |
 | `cli.py` | argparse + Rich CLI, including interactive selection |
 
 ## Data model (migration `0001_initial.sql`)
@@ -63,6 +68,10 @@ Postgres. One user's download queue doesn't need them.
 * `job_files`: per-file progress, checksum and errors (used by the worker).
 * `settings`: runtime overrides from the Settings page. `sync_state`: last sync
   timestamps.
+* `import_lists` + `import_entries` (migration 0003): an imported list and one row per entry, with
+  its hints, match status (`pending` → `matched` / `ambiguous` / `not_found` → `queued`, or `skipped`),
+  the chosen album, scored candidates and whether the wanted format is offered. Matching processes
+  `pending` rows, so it continues after a pause, an access check or a restart.
 
 ## Decisions
 
@@ -102,6 +111,8 @@ Postgres. One user's download queue doesn't need them.
 | 6 | Authorized download handling | ✅ `downloader.py`: track pages → CDN, `.part` + Range resume, size check, SHA-256, cover, `album_info.json`, conflict protection |
 | 7 | Library management and history import | ✅ `library.py`: scan/deep verify, duplicates, missing, account import, recovery queue |
 | 8 | Optional AI-assisted discovery | ✅ `ai.py`: OpenAI-compatible local LLM → validated search plan |
+
+| 0.2 | Import lists, REST API, MCP server | ✅ `imports.py`, Import pages, `import` CLI, `web/api.py` + Swagger, `web/mcp.py` |
 
 Release automation: `.github/workflows/ci.yml` (tests on Linux and Windows, Docker build) and
 `release.yml` (`v*` tag → multi-arch GHCR image + GitHub Release).

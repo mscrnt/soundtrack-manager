@@ -21,7 +21,7 @@ def db(tmp_path):
 
 
 def test_migrations_idempotent(db):
-    assert db.schema_version() == 2
+    assert db.schema_version() == 3
     assert db.migrate() == []
 
 

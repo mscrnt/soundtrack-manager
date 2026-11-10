@@ -1,0 +1,7 @@
+title,search,url,platform,year,format,priority,section,note,done
+Example Game Original Soundtrack,Example Game,,,,,1,Broken / damaged,track 5 was corrupt,
+Another Game Soundtrack,,,SNES,,,2,Incomplete albums,,
+Third Game II Original Soundtrack,Third Game II,,,1998,flac,2,Incomplete albums,,
+Some Series - Arranged Album,,,,,mp3,3,New albums,MP3 is fine for this one,
+Already Downloaded Game Soundtrack,,,,,,3,New albums,,x
+Exact Album By URL,,https://downloads.khinsider.com/game-soundtracks/album/replace-with-the-album-slug,,,,3,New albums,,

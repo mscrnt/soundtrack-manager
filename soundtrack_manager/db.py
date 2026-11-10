@@ -118,5 +118,6 @@ def _migration_files() -> list[tuple[int, str, str]]:
 
 
 def _split_sql(sql: str) -> list[str]:
-    lines = [ln for ln in sql.splitlines() if not ln.strip().startswith("--")]
-    return [s.strip() for s in "\n".join(lines).split(";") if s.strip()]
+    # Drop comments first, so a ';' inside one can't split a statement (no '--' appears inside SQL strings).
+    sql = re.sub(r"--[^\n]*", "", sql)
+    return [s.strip() for s in sql.split(";") if s.strip()]
