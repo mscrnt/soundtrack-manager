@@ -280,3 +280,10 @@ def test_repo_mcp_json_works_without_a_token(settings, fake_fetcher):
                                         "clientInfo": {"name": "t", "version": "0"}},
                          Host="127.0.0.1:8080", Authorization="Bearer ")
         assert r.status_code == 200 and init["result"]["serverInfo"]["name"] == "Soundtrack Manager"
+
+
+def test_import_tools_require_content(api):
+    schema = api.get("/api/v1/openapi.json").json()
+    for path in ("/imports", "/imports/validate"):
+        body = schema["paths"][path]["post"]["requestBody"]
+        assert body["required"] and "content" in body["content"]["application/json"]["schema"]["required"]

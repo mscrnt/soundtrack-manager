@@ -289,3 +289,8 @@ async def test_failed_format_check_keeps_the_match(ctx):
     assert e["status"] == "matched" and e["album_title"] == "Final Fantasy 35th Piano Covers"
     assert e["has_format"] is None and e["error"].startswith("format not checked")
     assert imp.get(lid)["queueable"] == 1  # unknown format still queues (the worker falls back to MP3)
+
+
+def test_weak_candidates_mean_not_found():
+    c = _rank("Zzzz Not A Real Game Soundtrack", ["No, I'm not a Human (Original Soundtrack)", "Not a Hero"])
+    assert c and decide(c)[0] == "not_found"   # listed for reference, but not a "choose" entry

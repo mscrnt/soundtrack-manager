@@ -216,14 +216,14 @@ def create_api(get_ctx: Callable) -> FastAPI:
                             source_format=None if body.source_format == "auto" else body.source_format)
 
     @api.post("/imports/validate", summary="Check a list file without importing it",
-              openapi_extra={"requestBody": {"content": {
+              openapi_extra={"requestBody": {"required": True, "content": {
                   "application/json": {"schema": ImportRequest.model_json_schema()},
                   "text/plain": {"schema": {"type": "string"}}, "text/csv": {"schema": {"type": "string"}}}}})
     async def validate_import_list(request: Request):
         return _parse(await _import_body(request)).to_dict()
 
     @api.post("/imports", status_code=201, summary="Import a list and start matching it",
-              openapi_extra={"requestBody": {"content": {
+              openapi_extra={"requestBody": {"required": True, "content": {
                   "application/json": {"schema": ImportRequest.model_json_schema()},
                   "text/plain": {"schema": {"type": "string"}}, "text/csv": {"schema": {"type": "string"}}}}})
     async def create_import_list(request: Request):

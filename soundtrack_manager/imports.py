@@ -52,6 +52,7 @@ MAX_ENTRIES = 5000
 AUTO_MATCH = 0.80       # best score needed to match without review
 AUTO_MARGIN = 0.08      # ...and how far ahead of the runner-up it must be
 MIN_CANDIDATE = 0.35    # below this a result isn't offered as a candidate
+REVIEW_MIN = 0.5        # below this the entry counts as not found (weak candidates are still listed)
 KEEP_CANDIDATES = 5
 ENTRY_STATUSES = ("pending", "matched", "ambiguous", "not_found", "error", "skipped", "queued")
 
@@ -541,6 +542,8 @@ def decide(cands: list[dict]) -> tuple[str, dict | None]:
         return "not_found", None
     best = cands[0]
     key = lambda c: c.get("rank", c["score"])
+    if key(best) < REVIEW_MIN:
+        return "not_found", None
     runner = key(cands[1]) if len(cands) > 1 else 0.0
     if key(best) >= AUTO_MATCH and key(best) - runner >= AUTO_MARGIN:
         return "matched", best
