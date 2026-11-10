@@ -1,7 +1,7 @@
 # Soundtrack Manager
 
 [![Latest release](https://img.shields.io/github/v/release/mscrnt/soundtrack-manager?sort=semver&label=release)](https://github.com/mscrnt/soundtrack-manager/releases/latest)
-[![Downloads](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fmscrnt%2Fsoundtrack-manager%2Fbadges%2Fdownloads.json)](https://github.com/mscrnt/soundtrack-manager/pkgs/container/soundtrack-manager)
+[![Downloads](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fmscrnt%2Fsoundtrack-manager%2Fbadges%2Fdownloads.json&cacheSeconds=3600)](https://github.com/mscrnt/soundtrack-manager/pkgs/container/soundtrack-manager)
 [![CI](https://github.com/mscrnt/soundtrack-manager/actions/workflows/ci.yml/badge.svg)](https://github.com/mscrnt/soundtrack-manager/actions/workflows/ci.yml)
 [![Release](https://github.com/mscrnt/soundtrack-manager/actions/workflows/release.yml/badge.svg)](https://github.com/mscrnt/soundtrack-manager/actions/workflows/release.yml)
 [![License: MIT](https://img.shields.io/github/license/mscrnt/soundtrack-manager)](LICENSE)
