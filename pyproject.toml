@@ -8,11 +8,11 @@ license = { text = "MIT" }
 # Pinned versions live in requirements.txt (also used by the Docker image).
 dependencies = [
     "fastapi>=0.162,<1", "starlette>=1.10", "uvicorn>=0.54", "jinja2>=3.1", "python-multipart>=0.0.32",
-    "httpx>=0.28", "beautifulsoup4>=4.13", "lxml>=5.3", "rich>=13", "playwright>=1.51", "fastmcp>=4.1,<5",
+    "httpx>=0.28", "beautifulsoup4>=4.13", "lxml>=6.1", "rich>=13", "playwright>=1.51", "fastmcp>=4.1,<5",
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=8"]
+dev = ["pytest>=9.0.3"]
 
 [project.urls]
 Repository = "https://github.com/mscrnt/soundtrack-manager"
